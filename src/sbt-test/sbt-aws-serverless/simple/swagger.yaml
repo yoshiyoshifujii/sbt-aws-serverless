@@ -1,0 +1,45 @@
+---
+swagger: "2.0"
+info:
+  version: "0.1"
+  title: "sample-api-2"
+schemes:
+- "https"
+paths:
+  /hellos:
+    get:
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      responses:
+        200:
+          schema:
+            $ref: "#/definitions/Hellos"
+        408:
+          description: "timed out"
+        500:
+          description: "internal server eorror"
+definitions:
+  Hellos:
+    type: object
+    required:
+      - items
+    properties:
+      items:
+        type: array
+        items:
+          $ref: '#/definitions/Hello'
+  Hello:
+    type: object
+    required:
+      - id
+      - message
+    properties:
+      id:
+        type: string
+      message:
+        type: string
+  Empty:
+    type: object
+

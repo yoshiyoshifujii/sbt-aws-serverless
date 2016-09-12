@@ -1,0 +1,12 @@
+> deploy
+
+> listLambdaVersions
+
+> listLambdaAliases
+
+> createDeployment test "test stage"
+
+> getStages
+
+> getDeployments
+
