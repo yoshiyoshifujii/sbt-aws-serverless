@@ -37,7 +37,7 @@ object AWSApiGatewayPlugin extends AutoPlugin {
         case Seq(restApiName, restApiDescription) =>
           api.create(restApiName, Some(restApiDescription)).get
         case _ =>
-          sys.error(s"Error apiGatewayCreateRestApi. useage: apiGatewayCreateRestApi <name> [description]")
+          sys.error(s"Error createApiGateway. useage: createApiGateway <name> [description]")
       }
       println(s"ApiGateway created: ${res.getId}")
     },
