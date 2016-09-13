@@ -11,6 +11,7 @@ object AWSApiGatewayPlugin extends AutoPlugin {
   object autoImport {
     lazy val getRestApis = taskKey[Unit]("")
     lazy val createApiGateway = inputKey[Unit]("")
+    lazy val deleteApiGateway = inputKey[Unit]("")
     lazy val putApiGateway = taskKey[Unit]("")
     lazy val deployStages = taskKey[Unit]("")
     lazy val createDeployment = inputKey[Unit]("")
@@ -45,6 +46,16 @@ object AWSApiGatewayPlugin extends AutoPlugin {
           sys.error(s"Error createApiGateway. useage: createApiGateway <name> [description]")
       }
       println(s"ApiGateway created: ${res.getId}")
+    },
+    deleteApiGateway := {
+      val api = new AWSApiGatewayRestApi(awsRegion.value)
+      spaceDelimited("<arg>").parsed match {
+        case Seq(restApiId) =>
+          api.delete(restApiId).get
+          println(s"ApiGateway deleted: $restApiId")
+        case _ =>
+          sys.error(s"Error deleteApiGateway. useage: deleteApiGateway <restApiId>")
+      }
     },
     putApiGateway := {
       val api = new AWSApiGatewayRestApi(awsRegion.value)
