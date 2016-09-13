@@ -9,6 +9,7 @@ import Keys._
 object AWSApiGatewayPlugin extends AutoPlugin {
 
   object autoImport {
+    lazy val getRestApis = taskKey[Unit]("")
     lazy val createApiGateway = inputKey[Unit]("")
     lazy val putApiGateway = taskKey[Unit]("")
     lazy val deployStages = taskKey[Unit]("")
@@ -29,6 +30,10 @@ object AWSApiGatewayPlugin extends AutoPlugin {
   import autoImport._
 
   override lazy val projectSettings = Seq(
+    getRestApis := {
+      val api = new AWSApiGatewayRestApi(awsRegion.value)
+      api.printGets.get
+    },
     createApiGateway := {
       val api = new AWSApiGatewayRestApi(awsRegion.value)
       val res = spaceDelimited("<arg>").parsed match {

@@ -67,6 +67,24 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
     client.getRestApis(request)
   }
 
+  def printGets = {
+    for {
+      l <- gets
+    } yield {
+      val p = CliFormatter(
+        "Rest APIs",
+        "Created Date" -> 30,
+        "Rest API Id" -> 15,
+        "Rest API Name" -> 20,
+        "Description" -> 30
+      ).print4(
+        l.getItems map { d =>
+          (d.getCreatedDate.toString, d.getId, d.getName, d.getDescription)
+        }: _*)
+      println(p)
+    }
+  }
+
   def `import`(body: File,
                failOnWarnings: Option[Boolean]) = Try {
     val request = new ImportRestApiRequest()
