@@ -119,17 +119,22 @@ object AWSServerlessPlugin extends AutoPlugin {
       lazy val createAliasIfNotExists = Try {
         (for {
           aOp <- lambda.getAlias(lambdaName, "dev")
-          if aOp.isEmpty
-          a <- lambda.createAlias(
-            functionName = lambdaName,
-            name = s"dev",
-            functionVersion = Some("$LATEST"),
-            description = None
-          )
-          p <- lambda.addPermission(
-            functionName = a.getAliasArn
-          )
-        } yield a).get
+          res <- aOp map { a =>
+            Try(a.getAliasArn)
+          } getOrElse {
+            for {
+              a <- lambda.createAlias(
+                functionName = lambdaName,
+                name = s"dev",
+                functionVersion = Some("$LATEST"),
+                description = None
+              )
+              p <- lambda.addPermission(
+                functionName = a.getAliasArn
+              )
+            } yield a.getAliasArn
+          }
+        } yield res).get
       }
 
       lazy val deployResource = new AWSApiGatewayMethods(region).deploy(
@@ -150,7 +155,7 @@ object AWSServerlessPlugin extends AutoPlugin {
         lambdaArn <- deployLambda
         _ = {println(s"Lambda Deploy: $lambdaArn")}
         v <- createAliasIfNotExists
-        _ = {println(s"Create Alias: ${v.getAliasArn}")}
+        _ = {println(s"Create Alias: $v")}
         resource <- deployResource
         _ = {println(s"Api Gateway Deploy")}
       } yield jar).get
