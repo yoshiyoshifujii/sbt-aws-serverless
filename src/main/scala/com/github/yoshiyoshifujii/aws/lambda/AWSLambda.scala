@@ -146,6 +146,15 @@ trait AWSLambdaWrapper extends AWSWrapper {
     client.createAlias(request)
   }
 
+  def getAlias(functionName: FunctionName,
+               name: String) = Try {
+    val request = new GetAliasRequest()
+      .withFunctionName(functionName)
+      .withName(name)
+
+    toOpt(client.getAlias(request))
+  }
+
   def listVersionsByFunction(functionName: FunctionName) = Try {
     val request = new ListVersionsByFunctionRequest()
       .withFunctionName(functionName)

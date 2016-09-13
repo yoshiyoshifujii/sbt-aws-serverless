@@ -116,8 +116,10 @@ object AWSServerlessPlugin extends AutoPlugin {
         memorySize = awsLambdaMemorySize.?.value
       )
 
-      lazy val createAlias = Try {
+      lazy val createAliasIfNotExists = Try {
         (for {
+          aOp <- lambda.getAlias(lambdaName, "dev")
+          if aOp.isEmpty
           a <- lambda.createAlias(
             functionName = lambdaName,
             name = s"dev",
@@ -147,7 +149,7 @@ object AWSServerlessPlugin extends AutoPlugin {
       (for {
         lambdaArn <- deployLambda
         _ = {println(s"Lambda Deploy: $lambdaArn")}
-        v <- createAlias
+        v <- createAliasIfNotExists
         _ = {println(s"Create Alias: ${v.getAliasArn}")}
         resource <- deployResource
         _ = {println(s"Api Gateway Deploy")}
