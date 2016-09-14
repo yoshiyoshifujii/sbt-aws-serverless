@@ -12,13 +12,6 @@ import scala.collection.JavaConversions._
 import scala.util.Try
 
 trait AWSLambdaWrapper extends AWSWrapper {
-  type Region = String
-  type FunctionName = String
-  type Role = String
-  type Handler = String
-  type Description = String
-  type Timeout = Int
-  type MemorySize = Int
 
   val regionName: String
 
