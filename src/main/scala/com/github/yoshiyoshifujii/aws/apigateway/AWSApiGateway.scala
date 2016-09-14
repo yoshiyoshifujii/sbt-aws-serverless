@@ -407,8 +407,8 @@ trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayWrapper {
       val p = CliFormatter(
         s"Rest API Authorizers: $restApiId",
         "ID" -> 15,
-        "Name" -> 20,
-        "URI" -> 40
+        "Name" -> 40,
+        "URI" -> 150
       ).print3(
         l.getItems map { d =>
           (d.getId, d.getName, d.getAuthorizerUri)
