@@ -1,6 +1,6 @@
 package com.github.yoshiyoshifujii.aws
 
-import com.github.yoshiyoshifujii.aws.apigateway.{AWSApiGatewayAuthorize, AWSApiGatewayMethods, Uri}
+import com.github.yoshiyoshifujii.aws.apigateway.{AWSApiGatewayAuthorize, Uri}
 import com.github.yoshiyoshifujii.aws.lambda.AWSLambda
 import sbt._
 
