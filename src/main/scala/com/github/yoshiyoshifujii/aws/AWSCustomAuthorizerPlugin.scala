@@ -45,7 +45,7 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
             region,
             awsAccountId.value,
             lambdaName,
-            awsApiGatewayResourceUriLambdaAlias.?.value
+            None
           ),
           identitySourceHeaderName = awsIdentitySourceHeaderName.value,
           identityValidationExpression = awsIdentityValidationExpression.?.value,
