@@ -18,7 +18,7 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
   import AWSApiGatewayPlugin.autoImport._
 
   override lazy val projectSettings = Seq(
-    deployDev := {
+    deploy := {
       val region = awsRegion.value
       val lambdaName = awsLambdaFunctionName.value
       val jar = sbtassembly.AssemblyKeys.assembly.value
