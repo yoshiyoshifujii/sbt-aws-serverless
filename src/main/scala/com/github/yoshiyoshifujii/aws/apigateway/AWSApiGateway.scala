@@ -400,6 +400,22 @@ trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayWrapper {
     client.getAuthorizers(request)
   }
 
+  def printAuthorizers(restApiId: RestApiId) =
+    for {
+      l <- getAuthorizers(restApiId)
+    } yield {
+      val p = CliFormatter(
+        s"Rest API Authorizers: $restApiId",
+        "ID" -> 15,
+        "Name" -> 20,
+        "URI" -> 40
+      ).print3(
+        l.getItems map { d =>
+          (d.getId, d.getName, d.getAuthorizerUri)
+        }: _*)
+      println(p)
+    }
+
   def getAuthorizer(restApiId: RestApiId,
                     name: String) =
     for {

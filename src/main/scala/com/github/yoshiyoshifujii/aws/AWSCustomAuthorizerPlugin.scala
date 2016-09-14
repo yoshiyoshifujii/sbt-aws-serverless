@@ -7,6 +7,8 @@ import sbt._
 object AWSCustomAuthorizerPlugin extends AutoPlugin {
 
   object autoImport {
+    lazy val getAuthorizers = taskKey[Unit]("")
+
     lazy val awsAuthorizerName = settingKey[String]("")
     lazy val awsIdentitySourceHeaderName = settingKey[String]("")
     lazy val awsIdentityValidationExpression = settingKey[String]("")
@@ -18,6 +20,12 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
   import AWSApiGatewayPlugin.autoImport._
 
   override lazy val projectSettings = Seq(
+    getAuthorizers := {
+      val region = awsRegion.value
+      new AWSApiGatewayAuthorize(region).printAuthorizers(
+        restApiId = awsApiGatewayRestApiId.value
+      )
+    },
     deploy := {
       val region = awsRegion.value
       val lambdaName = awsLambdaFunctionName.value
