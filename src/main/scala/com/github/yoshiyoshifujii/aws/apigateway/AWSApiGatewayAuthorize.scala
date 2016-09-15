@@ -8,9 +8,9 @@ import scala.collection.JavaConverters._
 import scala.util.Try
 
 trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayWrapper {
+  val restApiId: RestApiId
 
-  def createAuthorizer(restApiId: RestApiId,
-                       name: String,
+  def createAuthorizer(name: String,
                        authorizerUri: Uri,
                        identitySourceHeaderName: String,
                        identityValidationExpression: Option[String],
@@ -28,16 +28,16 @@ trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayWrapper {
     client.createAuthorizer(request)
   }
 
-  def getAuthorizers(restApiId: RestApiId) = Try {
+  def getAuthorizers = Try {
     val request = new GetAuthorizersRequest()
       .withRestApiId(restApiId)
 
     client.getAuthorizers(request)
   }
 
-  def printAuthorizers(restApiId: RestApiId) =
+  def printAuthorizers =
     for {
-      l <- getAuthorizers(restApiId)
+      l <- getAuthorizers
     } yield {
       val p = CliFormatter(
         s"Rest API Authorizers: $restApiId",
@@ -51,14 +51,12 @@ trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayWrapper {
       println(p)
     }
 
-  def getAuthorizer(restApiId: RestApiId,
-                    name: String) =
+  def getAuthorizer(name: String) =
     for {
-      as <- getAuthorizers(restApiId)
+      as <- getAuthorizers
     } yield as.getItems.find(a => a.getName == name)
 
-  def updateAuthorizer(restApiId: RestApiId,
-                       authorizerId: AuthorizerId,
+  def updateAuthorizer(authorizerId: AuthorizerId,
                        name: String,
                        authorizerUri: Uri,
                        identitySourceHeaderName: String,
@@ -89,18 +87,16 @@ trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayWrapper {
     client.updateAuthorizer(request)
   }
 
-  def deployAuthorizer(restApiId: RestApiId,
-                       name: String,
+  def deployAuthorizer(name: String,
                        authorizerUri: Uri,
                        identitySourceHeaderName: String,
                        identityValidationExpression: Option[String],
                        authorizerResultTtlInSeconds: Option[Int] = Some(300)) = {
     for {
-      aOp <- getAuthorizer(restApiId, name)
+      aOp <- getAuthorizer(name)
       id <- Try {
         aOp map { a =>
           updateAuthorizer(
-            restApiId = restApiId,
             authorizerId = a.getId,
             name = name,
             authorizerUri = authorizerUri,
@@ -110,7 +106,6 @@ trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayWrapper {
           ).get.getId
         } getOrElse {
           createAuthorizer(
-            restApiId = restApiId,
             name = name,
             authorizerUri = authorizerUri,
             identitySourceHeaderName = identitySourceHeaderName,
@@ -123,5 +118,6 @@ trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayWrapper {
   }
 
 }
-case class AWSApiGatewayAuthorize(regionName: String) extends AWSApiGatewayAuthorizeWrapper
+case class AWSApiGatewayAuthorize(regionName: String,
+                                  restApiId: RestApiId) extends AWSApiGatewayAuthorizeWrapper
 

@@ -7,10 +7,11 @@ import scala.collection.JavaConverters._
 import scala.util.Try
 
 trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
+  val restApiId: RestApiId
+  val path: Path
+  val httpMethod: HttpMethod
 
-  def putIntegration(restApiId: RestApiId,
-                     resourceId: ResourceId,
-                     httpMethod: HttpMethod,
+  def putIntegration(resourceId: ResourceId,
                      uri: Uri,
                      requestTemplates: RequestTemplates) = Try {
     val request = new PutIntegrationRequest()
@@ -26,9 +27,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     client.putIntegration(request)
   }
 
-  def putIntegrationResponse(restApiId: RestApiId,
-                             resourceId: ResourceId,
-                             httpMethod: HttpMethod,
+  def putIntegrationResponse(resourceId: ResourceId,
                              statusCode: StatusCode,
                              selectionPattern: Option[SelectionPattern],
                              responseTemplates: (String, String)*) = Try {
@@ -45,9 +44,19 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     client.putIntegrationResponse(request)
   }
 
-  def getIntegration(restApiId: RestApiId,
-                     resourceId: ResourceId,
-                     httpMethod: HttpMethod) = Try {
+  def putIntegrationResponses(resourceId: ResourceId,
+                              responseTemplates: ResponseTemplates) = Try {
+    responseTemplates.values map { resT =>
+      putIntegrationResponse(
+        resourceId,
+        resT.statusCode,
+        resT.selectionPattern,
+        resT.templates: _*
+      ).get
+    }
+  }
+
+  def getIntegration(resourceId: ResourceId) = Try {
     val request = new GetIntegrationRequest()
       .withRestApiId(restApiId)
       .withResourceId(resourceId)
@@ -56,36 +65,30 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     toOpt(client.getIntegration(request))
   }
 
-  def getResource(restApiId: RestApiId,
-                  path: String) = {
+  def getResource =
     for {
       resources <- getResources(restApiId)
     } yield resources.getItems.find(_.getPath == path)
-  }
 
-  def deploy(restApiId: RestApiId,
-             path: String,
-             httpMethod: String,
-             uri: Uri,
+  def deploy(uri: Uri,
              requestTemplates: RequestTemplates,
              responseTemplates: ResponseTemplates): Try[Option[Resource]] = {
     for {
-      resource <- getResource(restApiId, path)
+      resource <- getResource
       r <- Try {
-        for {
-          r <- resource
-          resourceId = r.getId
-        } yield (for {
-          i <- putIntegration(restApiId, resourceId, httpMethod, uri, requestTemplates)
-          irs <- Try {
-            responseTemplates.values map { resT =>
-              putIntegrationResponse(restApiId, resourceId, httpMethod, resT.statusCode, resT.selectionPattern, resT.templates: _*).get
-            }
-          }
-        } yield r).get
+        resource map { r =>
+          val resourceId = r.getId
+          (for {
+            i <- putIntegration(resourceId, uri, requestTemplates)
+            irs <- putIntegrationResponses(resourceId, responseTemplates)
+          } yield r).get
+        }
       }
     } yield r
   }
 }
-case class AWSApiGatewayMethods(regionName: String) extends AWSApiGatewayMethodsWrapper
+case class AWSApiGatewayMethods(regionName: String,
+                                restApiId: RestApiId,
+                                path: Path,
+                                httpMethod: HttpMethod) extends AWSApiGatewayMethodsWrapper
 

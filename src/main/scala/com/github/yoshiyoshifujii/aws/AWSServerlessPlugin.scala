@@ -79,19 +79,22 @@ object AWSServerlessPlugin extends AutoPlugin {
         }
       }
 
-      lazy val deployResource = (v: String) => AWSApiGatewayMethods(region).deploy(
-        restApiId = awsApiGatewayRestApiId.value,
-        path = awsApiGatewayResourcePath.value,
-        httpMethod = awsApiGatewayResourceHttpMethod.value,
-        uri = Uri(
-          region,
-          awsAccountId.value,
-          lambdaName,
-          awsApiGatewayResourceUriLambdaAlias.?.value.map(a => s"$a$v")
-        ),
-        requestTemplates = RequestTemplates(awsApiGatewayIntegrationRequestTemplates.value: _*),
-        responseTemplates = awsApiGatewayIntegrationResponseTemplates.value
-      )
+      lazy val deployResource = (v: String) =>
+        AWSApiGatewayMethods(
+          regionName = region,
+          restApiId = awsApiGatewayRestApiId.value,
+          path = awsApiGatewayResourcePath.value,
+          httpMethod = awsApiGatewayResourceHttpMethod.value
+        ).deploy(
+          uri = Uri(
+            region,
+            awsAccountId.value,
+            lambdaName,
+            awsApiGatewayResourceUriLambdaAlias.?.value.map(a => s"$a$v")
+          ),
+          requestTemplates = RequestTemplates(awsApiGatewayIntegrationRequestTemplates.value: _*),
+          responseTemplates = awsApiGatewayIntegrationResponseTemplates.value
+        )
 
       (for {
         lambdaArn <- Try(deployLambda.value)
@@ -131,36 +134,24 @@ object AWSServerlessPlugin extends AutoPlugin {
         } yield res).get
       }
 
-      lazy val deployResource = AWSApiGatewayMethods(region).deploy(
-        restApiId = awsApiGatewayRestApiId.value,
-        path = awsApiGatewayResourcePath.value,
-        httpMethod = awsApiGatewayResourceHttpMethod.value,
-        uri = Uri(
-          region,
-          awsAccountId.value,
-          lambdaName,
-          awsApiGatewayResourceUriLambdaAlias.?.value
-        ),
-        requestTemplates = RequestTemplates(awsApiGatewayIntegrationRequestTemplates.value: _*),
-        responseTemplates = awsApiGatewayIntegrationResponseTemplates.value
-      )
-
       (for {
         lambdaArn <- Try(deployLambda.value)
         _ = {println(s"Lambda Deploy: $lambdaArn")}
         v <- createAliasIfNotExists
         _ = {println(s"Create Alias: $v")}
-        resource <- deployResource
+        resource <- Try(deployResource.value)
         _ = {println(s"Api Gateway Deploy")}
       } yield jar).get
     },
     deployResource := {
       val region = awsRegion.value
       val lambdaName = awsLambdaFunctionName.value
-      AWSApiGatewayMethods(region).deploy(
+      AWSApiGatewayMethods(
+        regionName = region,
         restApiId = awsApiGatewayRestApiId.value,
         path = awsApiGatewayResourcePath.value,
-        httpMethod = awsApiGatewayResourceHttpMethod.value,
+        httpMethod = awsApiGatewayResourceHttpMethod.value
+      ).deploy(
         uri = Uri(
           region,
           awsAccountId.value,

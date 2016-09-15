@@ -22,9 +22,10 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
   override lazy val projectSettings = Seq(
     getAuthorizers := {
       val region = awsRegion.value
-      AWSApiGatewayAuthorize(region).printAuthorizers(
+      AWSApiGatewayAuthorize(
+        regionName = region,
         restApiId = awsApiGatewayRestApiId.value
-      )
+      ).printAuthorizers
     },
     deploy := {
       val region = awsRegion.value
@@ -47,8 +48,10 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
       (for {
         lambdaArn <- deployLambda
         _ = {println(s"Lambda Deploy: $lambdaArn")}
-        authorizerId <- AWSApiGatewayAuthorize(region).deployAuthorizer(
-          restApiId = awsApiGatewayRestApiId.value,
+        authorizerId <- AWSApiGatewayAuthorize(
+          regionName = region,
+          restApiId = awsApiGatewayRestApiId.value
+        ).deployAuthorizer(
           name = awsAuthorizerName.value,
           authorizerUri = Uri(
             region,

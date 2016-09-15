@@ -9,6 +9,7 @@ package object apigateway {
   type DeploymentId = String
   type StageVariables = Map[String, String]
   type ResourceId = String
+  type Path = String
   type HttpMethod = String
   type StatusCode = String
   type SelectionPattern = String
