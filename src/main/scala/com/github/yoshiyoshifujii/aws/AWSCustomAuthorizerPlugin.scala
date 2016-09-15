@@ -27,13 +27,14 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
         restApiId = awsApiGatewayRestApiId.value
       )
     },
-    AWSServerlessPlugin.autoImport.deploy := {
+    deployLambda := deployLambda.value,
+    deploy := {
       val region = awsRegion.value
       val lambdaName = awsLambdaFunctionName.value
       val jar = sbtassembly.AssemblyKeys.assembly.value
 
       (for {
-        lambdaArn <- Try(AWSServerlessPlugin.autoImport.deployLambda.value)
+        lambdaArn <- Try(deployLambda.value)
         _ = {println(s"Lambda Deploy: $lambdaArn")}
         authorizerId <- AWSApiGatewayAuthorize(region).deployAuthorizer(
           restApiId = awsApiGatewayRestApiId.value,
@@ -51,6 +52,6 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
         _ = {println(s"API Gateway Authorizer Deploy: $authorizerId")}
       } yield jar).get
     },
-    AWSServerlessPlugin.autoImport.deployDev := AWSServerlessPlugin.autoImport.deploy.value
+    deployDev := deploy.value
   )
 }
