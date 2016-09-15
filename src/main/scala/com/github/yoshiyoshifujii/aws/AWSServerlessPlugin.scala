@@ -16,30 +16,34 @@ object AWSServerlessPlugin extends AutoPlugin {
     lazy val listLambdaVersions = taskKey[Unit]("")
     lazy val listLambdaAliases = taskKey[Unit]("")
 
-    lazy val awsLambdaFunctionName = settingKey[String]("")
-    lazy val awsLambdaDescription = settingKey[String]("")
-    lazy val awsLambdaHandler = settingKey[String]("")
-    lazy val awsLambdaRole = settingKey[String]("")
-    lazy val awsLambdaTimeout = settingKey[Int]("")
-    lazy val awsLambdaMemorySize = settingKey[Int]("")
-    lazy val awsLambdaS3Bucket = settingKey[String]("")
-    lazy val awsLambdaDeployDescription = settingKey[String]("")
-    lazy val awsLambdaAliasNames = settingKey[Seq[String]]("")
+    object SettingKeys {
+      lazy val awsLambdaFunctionName = settingKey[String]("")
+      lazy val awsLambdaDescription = settingKey[String]("")
+      lazy val awsLambdaHandler = settingKey[String]("")
+      lazy val awsLambdaRole = settingKey[String]("")
+      lazy val awsLambdaTimeout = settingKey[Int]("")
+      lazy val awsLambdaMemorySize = settingKey[Int]("")
+      lazy val awsLambdaS3Bucket = settingKey[String]("")
+      lazy val awsLambdaDeployDescription = settingKey[String]("")
+      lazy val awsLambdaAliasNames = settingKey[Seq[String]]("")
 
-    lazy val awsApiGatewayResourcePath = settingKey[String]("")
-    lazy val awsApiGatewayResourceHttpMethod = settingKey[String]("")
-    lazy val awsApiGatewayResourceUriLambdaAlias = settingKey[String]("")
-    lazy val awsApiGatewayIntegrationRequestTemplates = settingKey[Seq[(String, String)]]("")
-    lazy val awsApiGatewayIntegrationResponseTemplates = settingKey[ResponseTemplates]("")
+      lazy val awsApiGatewayResourcePath = settingKey[String]("")
+      lazy val awsApiGatewayResourceHttpMethod = settingKey[String]("")
+      lazy val awsApiGatewayResourceUriLambdaAlias = settingKey[String]("")
+      lazy val awsApiGatewayIntegrationRequestTemplates = settingKey[Seq[(String, String)]]("")
+      lazy val awsApiGatewayIntegrationResponseTemplates = settingKey[ResponseTemplates]("")
+    }
   }
 
   import autoImport._
+  import SettingKeys._
+  import AWSApiGatewayPlugin.autoImport.SettingKeys._
 
   override def requires = sbtassembly.AssemblyPlugin
 
   override lazy val projectSettings = Seq(
     deployLambda := {
-      val region = AWSApiGatewayPlugin.autoImport.awsRegion.value
+      val region = awsRegion.value
       AWSLambda(region).deploy(
         functionName = awsLambdaFunctionName.value,
         role = awsLambdaRole.value,
@@ -52,7 +56,7 @@ object AWSServerlessPlugin extends AutoPlugin {
       ).get
     },
     deploy := {
-      val region = AWSApiGatewayPlugin.autoImport.awsRegion.value
+      val region = awsRegion.value
       val lambdaName = awsLambdaFunctionName.value
       val jar = sbtassembly.AssemblyKeys.assembly.value
       val lambda = AWSLambda(region)
@@ -79,12 +83,12 @@ object AWSServerlessPlugin extends AutoPlugin {
       }
 
       lazy val deployResource = (v: String) => AWSApiGatewayMethods(region).deploy(
-        restApiId = AWSApiGatewayPlugin.autoImport.awsApiGatewayRestApiId.value,
+        restApiId = awsApiGatewayRestApiId.value,
         path = awsApiGatewayResourcePath.value,
         httpMethod = awsApiGatewayResourceHttpMethod.value,
         uri = Uri(
           region,
-          AWSApiGatewayPlugin.autoImport.awsAccountId.value,
+          awsAccountId.value,
           lambdaName,
           awsApiGatewayResourceUriLambdaAlias.?.value.map(a => s"$a$v")
         ),
@@ -104,7 +108,7 @@ object AWSServerlessPlugin extends AutoPlugin {
       } yield jar).get
     },
     deployDev := {
-      val region = AWSApiGatewayPlugin.autoImport.awsRegion.value
+      val region = awsRegion.value
       val lambdaName = awsLambdaFunctionName.value
       val jar = sbtassembly.AssemblyKeys.assembly.value
       val lambda = AWSLambda(region)
@@ -131,12 +135,12 @@ object AWSServerlessPlugin extends AutoPlugin {
       }
 
       lazy val deployResource = AWSApiGatewayMethods(region).deploy(
-        restApiId = AWSApiGatewayPlugin.autoImport.awsApiGatewayRestApiId.value,
+        restApiId = awsApiGatewayRestApiId.value,
         path = awsApiGatewayResourcePath.value,
         httpMethod = awsApiGatewayResourceHttpMethod.value,
         uri = Uri(
           region,
-          AWSApiGatewayPlugin.autoImport.awsAccountId.value,
+          awsAccountId.value,
           lambdaName,
           awsApiGatewayResourceUriLambdaAlias.?.value
         ),
@@ -154,15 +158,15 @@ object AWSServerlessPlugin extends AutoPlugin {
       } yield jar).get
     },
     deployResource := {
-      val region = AWSApiGatewayPlugin.autoImport.awsRegion.value
+      val region = awsRegion.value
       val lambdaName = awsLambdaFunctionName.value
       AWSApiGatewayMethods(region).deploy(
-        restApiId = AWSApiGatewayPlugin.autoImport.awsApiGatewayRestApiId.value,
+        restApiId = awsApiGatewayRestApiId.value,
         path = awsApiGatewayResourcePath.value,
         httpMethod = awsApiGatewayResourceHttpMethod.value,
         uri = Uri(
           region,
-          AWSApiGatewayPlugin.autoImport.awsAccountId.value,
+          awsAccountId.value,
           lambdaName,
           awsApiGatewayResourceUriLambdaAlias.?.value
         ),
@@ -171,13 +175,13 @@ object AWSServerlessPlugin extends AutoPlugin {
       ).get
     },
     listLambdaVersions := {
-      val region = AWSApiGatewayPlugin.autoImport.awsRegion.value
+      val region = awsRegion.value
       AWSLambda(region)
         .printListVersionsByFunction(awsLambdaFunctionName.value)
         .get
     },
     listLambdaAliases := {
-      val region = AWSApiGatewayPlugin.autoImport.awsRegion.value
+      val region = awsRegion.value
       AWSLambda(region)
         .printListAliases(awsLambdaFunctionName.value)
         .get

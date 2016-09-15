@@ -10,15 +10,18 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
   object autoImport {
     lazy val getAuthorizers = taskKey[Unit]("")
 
-    lazy val awsAuthorizerName = settingKey[String]("")
-    lazy val awsIdentitySourceHeaderName = settingKey[String]("")
-    lazy val awsIdentityValidationExpression = settingKey[String]("")
-    lazy val awsAuthorizerResultTtlInSeconds = settingKey[Int]("")
+    object SettingKeys {
+      lazy val awsAuthorizerName = settingKey[String]("")
+      lazy val awsIdentitySourceHeaderName = settingKey[String]("")
+      lazy val awsIdentityValidationExpression = settingKey[String]("")
+      lazy val awsAuthorizerResultTtlInSeconds = settingKey[Int]("")
+    }
   }
 
   import autoImport._
-  import AWSServerlessPlugin.autoImport._
-  import AWSApiGatewayPlugin.autoImport._
+  import SettingKeys._
+  import AWSServerlessPlugin.autoImport.SettingKeys._
+  import AWSApiGatewayPlugin.autoImport.SettingKeys._
 
   override lazy val projectSettings = Seq(
     getAuthorizers := {
@@ -27,13 +30,13 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
         restApiId = awsApiGatewayRestApiId.value
       )
     },
-    deploy := {
+    AWSServerlessPlugin.autoImport.deploy := {
       val region = awsRegion.value
       val lambdaName = awsLambdaFunctionName.value
       val jar = sbtassembly.AssemblyKeys.assembly.value
 
       (for {
-        lambdaArn <- Try(deployLambda.value)
+        lambdaArn <- Try(AWSServerlessPlugin.autoImport.deployLambda.value)
         _ = {println(s"Lambda Deploy: $lambdaArn")}
         authorizerId <- AWSApiGatewayAuthorize(region).deployAuthorizer(
           restApiId = awsApiGatewayRestApiId.value,
@@ -51,6 +54,6 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
         _ = {println(s"API Gateway Authorizer Deploy: $authorizerId")}
       } yield jar).get
     },
-    deployDev := deploy.value
+    AWSServerlessPlugin.autoImport.deployDev := AWSServerlessPlugin.autoImport.deploy.value
   )
 }
