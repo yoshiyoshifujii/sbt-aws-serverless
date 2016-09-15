@@ -123,5 +123,5 @@ trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayWrapper {
   }
 
 }
-class AWSApiGatewayAuthorize(val regionName: String) extends AWSApiGatewayAuthorizeWrapper
+case class AWSApiGatewayAuthorize(regionName: String) extends AWSApiGatewayAuthorizeWrapper
 

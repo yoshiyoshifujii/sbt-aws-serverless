@@ -6,7 +6,7 @@ import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.util.Try
 
-trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayWrapper {
+trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
 
   def putIntegration(restApiId: RestApiId,
                      resourceId: ResourceId,
@@ -56,13 +56,6 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayWrapper {
     toOpt(client.getIntegration(request))
   }
 
-  def getResources(restApiId: RestApiId) = Try {
-    val request = new GetResourcesRequest()
-      .withRestApiId(restApiId)
-
-    client.getResources(request)
-  }
-
   def getResource(restApiId: RestApiId,
                   path: String) = {
     for {
@@ -94,5 +87,5 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayWrapper {
     } yield r
   }
 }
-class AWSApiGatewayMethods(val regionName: String) extends AWSApiGatewayMethodsWrapper
+case class AWSApiGatewayMethods(regionName: String) extends AWSApiGatewayMethodsWrapper
 

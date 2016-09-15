@@ -233,5 +233,5 @@ trait AWSLambdaWrapper extends AWSWrapper {
 
 }
 
-class AWSLambda(val regionName: String) extends AWSLambdaWrapper
+case class AWSLambda(regionName: String) extends AWSLambdaWrapper
 

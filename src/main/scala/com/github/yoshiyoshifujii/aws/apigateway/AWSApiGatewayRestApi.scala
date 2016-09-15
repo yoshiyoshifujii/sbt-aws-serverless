@@ -209,6 +209,31 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
       println(p)
     }
   }
+
+  def getResources(restApiId: RestApiId) = Try {
+    val request = new GetResourcesRequest()
+      .withRestApiId(restApiId)
+
+    client.getResources(request)
+  }
+
+  def printResources(restApiId: RestApiId) =
+    for {
+      l <- getResources(restApiId)
+    } yield {
+      val p = CliFormatter(
+        restApiId,
+        "Resource Id" -> 15,
+        "Resource Path" -> 30,
+        "Method Keys" -> 30
+      ).print3(
+        l.getItems map { r =>
+          (r.getId, r.getPath, ("" /: r.getResourceMethods.keys)(_ + "," + _))
+        }: _*)
+      println(p)
+
+    }
+
 }
-class AWSApiGatewayRestApi(val regionName: String) extends AWSApiGatewayRestApiWrapper
+case class AWSApiGatewayRestApi(regionName: String) extends AWSApiGatewayRestApiWrapper
 
