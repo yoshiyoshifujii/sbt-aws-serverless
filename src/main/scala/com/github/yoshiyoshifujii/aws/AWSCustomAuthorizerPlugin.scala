@@ -10,18 +10,15 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
   object autoImport {
     lazy val getAuthorizers = taskKey[Unit]("")
 
-    object SettingKeys {
-      lazy val awsAuthorizerName = settingKey[String]("")
-      lazy val awsIdentitySourceHeaderName = settingKey[String]("")
-      lazy val awsIdentityValidationExpression = settingKey[String]("")
-      lazy val awsAuthorizerResultTtlInSeconds = settingKey[Int]("")
-    }
+    lazy val awsAuthorizerName = settingKey[String]("")
+    lazy val awsIdentitySourceHeaderName = settingKey[String]("")
+    lazy val awsIdentityValidationExpression = settingKey[String]("")
+    lazy val awsAuthorizerResultTtlInSeconds = settingKey[Int]("")
   }
 
   import autoImport._
-  import SettingKeys._
-  import AWSServerlessPlugin.autoImport.SettingKeys._
-  import AWSApiGatewayPlugin.autoImport.SettingKeys._
+  import AWSServerlessPlugin.autoImport._
+  import AWSApiGatewayPlugin.autoImport._
 
   override lazy val projectSettings = Seq(
     getAuthorizers := {

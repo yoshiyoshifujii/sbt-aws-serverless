@@ -22,19 +22,16 @@ object AWSApiGatewayPlugin extends AutoPlugin {
     lazy val deleteStages = taskKey[Unit]("")
     lazy val deleteDeployments = taskKey[Unit]("")
 
-    object SettingKeys {
-      lazy val awsRegion = settingKey[String]("")
-      lazy val awsAccountId = settingKey[String]("")
+    lazy val awsRegion = settingKey[String]("")
+    lazy val awsAccountId = settingKey[String]("")
 
-      lazy val awsApiGatewayRestApiId = settingKey[String]("")
-      lazy val awsApiGatewayYAMLFile = settingKey[File]("")
-      lazy val awsApiGatewayStages = settingKey[Seq[(String, Option[String])]]("")
-      lazy val awsApiGatewayStageVariables = settingKey[Map[String, Map[String, String]]]("")
-    }
+    lazy val awsApiGatewayRestApiId = settingKey[String]("")
+    lazy val awsApiGatewayYAMLFile = settingKey[File]("")
+    lazy val awsApiGatewayStages = settingKey[Seq[(String, Option[String])]]("")
+    lazy val awsApiGatewayStageVariables = settingKey[Map[String, Map[String, String]]]("")
   }
 
   import autoImport._
-  import SettingKeys._
 
   override lazy val projectSettings = Seq(
     getRestApis := {

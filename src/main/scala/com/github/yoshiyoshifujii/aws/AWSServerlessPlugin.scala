@@ -16,28 +16,25 @@ object AWSServerlessPlugin extends AutoPlugin {
     lazy val listLambdaVersions = taskKey[Unit]("")
     lazy val listLambdaAliases = taskKey[Unit]("")
 
-    object SettingKeys {
-      lazy val awsLambdaFunctionName = settingKey[String]("")
-      lazy val awsLambdaDescription = settingKey[String]("")
-      lazy val awsLambdaHandler = settingKey[String]("")
-      lazy val awsLambdaRole = settingKey[String]("")
-      lazy val awsLambdaTimeout = settingKey[Int]("")
-      lazy val awsLambdaMemorySize = settingKey[Int]("")
-      lazy val awsLambdaS3Bucket = settingKey[String]("")
-      lazy val awsLambdaDeployDescription = settingKey[String]("")
-      lazy val awsLambdaAliasNames = settingKey[Seq[String]]("")
+    lazy val awsLambdaFunctionName = settingKey[String]("")
+    lazy val awsLambdaDescription = settingKey[String]("")
+    lazy val awsLambdaHandler = settingKey[String]("")
+    lazy val awsLambdaRole = settingKey[String]("")
+    lazy val awsLambdaTimeout = settingKey[Int]("")
+    lazy val awsLambdaMemorySize = settingKey[Int]("")
+    lazy val awsLambdaS3Bucket = settingKey[String]("")
+    lazy val awsLambdaDeployDescription = settingKey[String]("")
+    lazy val awsLambdaAliasNames = settingKey[Seq[String]]("")
 
-      lazy val awsApiGatewayResourcePath = settingKey[String]("")
-      lazy val awsApiGatewayResourceHttpMethod = settingKey[String]("")
-      lazy val awsApiGatewayResourceUriLambdaAlias = settingKey[String]("")
-      lazy val awsApiGatewayIntegrationRequestTemplates = settingKey[Seq[(String, String)]]("")
-      lazy val awsApiGatewayIntegrationResponseTemplates = settingKey[ResponseTemplates]("")
-    }
+    lazy val awsApiGatewayResourcePath = settingKey[String]("")
+    lazy val awsApiGatewayResourceHttpMethod = settingKey[String]("")
+    lazy val awsApiGatewayResourceUriLambdaAlias = settingKey[String]("")
+    lazy val awsApiGatewayIntegrationRequestTemplates = settingKey[Seq[(String, String)]]("")
+    lazy val awsApiGatewayIntegrationResponseTemplates = settingKey[ResponseTemplates]("")
   }
 
   import autoImport._
-  import SettingKeys._
-  import AWSApiGatewayPlugin.autoImport.SettingKeys._
+  import AWSApiGatewayPlugin.autoImport._
 
   override def requires = sbtassembly.AssemblyPlugin
 
