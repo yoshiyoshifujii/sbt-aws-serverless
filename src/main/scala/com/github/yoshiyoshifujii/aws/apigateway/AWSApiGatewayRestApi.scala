@@ -48,7 +48,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
         "Rest APIs",
         "Created Date" -> 30,
         "Rest API Id" -> 15,
-        "Rest API Name" -> 20,
+        "Rest API Name" -> 30,
         "Description" -> 30
       ).print4(
         l.getItems map { d =>
@@ -217,7 +217,12 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
     client.getResources(request)
   }
 
-  def printResources(restApiId: RestApiId) =
+  def printResources(restApiId: RestApiId) = {
+    lazy val getResourceMethodKeys = (r: Resource) =>
+      Option(r.getResourceMethods) map { m =>
+        ("" /: m.keys)(_ + "," + _)
+      } getOrElse ""
+
     for {
       l <- getResources(restApiId)
     } yield {
@@ -228,11 +233,11 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
         "Method Keys" -> 30
       ).print3(
         l.getItems map { r =>
-          (r.getId, r.getPath, ("" /: r.getResourceMethods.keys)(_ + "," + _))
+          (r.getId, r.getPath, getResourceMethodKeys(r))
         }: _*)
       println(p)
-
     }
+  }
 
 }
 case class AWSApiGatewayRestApi(regionName: String) extends AWSApiGatewayRestApiWrapper
