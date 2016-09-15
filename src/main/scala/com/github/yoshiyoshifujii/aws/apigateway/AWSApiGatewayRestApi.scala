@@ -95,6 +95,44 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
     client.createDeployment(request)
   }
 
+  def deleteDeployment(restApiId: RestApiId,
+                       deploymentId: DeploymentId) = Try {
+    val request = new DeleteDeploymentRequest()
+      .withRestApiId(restApiId)
+      .withDeploymentId(deploymentId)
+
+    client.deleteDeployment(request)
+  }
+
+  def getDeployments(restApiId: RestApiId) = Try {
+    val request = new GetDeploymentsRequest()
+      .withRestApiId(restApiId)
+
+    client.getDeployments(request)
+  }
+
+  def printDeployments(restApiId: RestApiId) = {
+    for {
+      l <- getDeployments(restApiId)
+    } yield {
+      val p = CliFormatter(
+        restApiId,
+        "Created Date" -> 30,
+        "Deployment Id" -> 15,
+        "Description" -> 30
+      ).print3(
+        l.getItems map { d =>
+          (d.getCreatedDate.toString, d.getId, d.getDescription)
+        }: _*)
+      println(p)
+    }
+  }
+
+  def deleteDeployments(restApiId: RestApiId) =
+    for {
+      l <- getDeployments(restApiId)
+    } yield l.getItems foreach(i => deleteDeployment(restApiId, i.getId))
+
   def createStage(restApiId: RestApiId,
                   stageName: StageName,
                   deploymentId: DeploymentId,
@@ -135,6 +173,15 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
     client.updateStage(request)
   }
 
+  def deleteStage(restApiId: RestApiId,
+                  stageName: StageName) = Try {
+    val request = new DeleteStageRequest()
+      .withRestApiId(restApiId)
+      .withStageName(stageName)
+
+    client.deleteStage(request)
+  }
+
   def createOrUpdateStage(restApiId: RestApiId,
                           stageName: StageName,
                           deploymentId: DeploymentId,
@@ -161,30 +208,6 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
     } yield res
   }
 
-  def getDeployments(restApiId: RestApiId) = Try {
-    val request = new GetDeploymentsRequest()
-      .withRestApiId(restApiId)
-
-    client.getDeployments(request)
-  }
-
-  def printDeployments(restApiId: RestApiId) = {
-    for {
-      l <- getDeployments(restApiId)
-    } yield {
-      val p = CliFormatter(
-        restApiId,
-        "Created Date" -> 30,
-        "Deployment Id" -> 15,
-        "Description" -> 30
-      ).print3(
-        l.getItems map { d =>
-          (d.getCreatedDate.toString, d.getId, d.getDescription)
-        }: _*)
-      println(p)
-    }
-  }
-
   def getStages(restApiId: RestApiId) = Try {
     val request = new GetStagesRequest()
       .withRestApiId(restApiId)
@@ -209,6 +232,11 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
       println(p)
     }
   }
+
+  def deleteStages(restApiId: RestApiId) =
+    for {
+      l <- getStages(restApiId)
+    } yield l.getItem.foreach(i => deleteStage(restApiId, i.getStageName))
 
   def getResources(restApiId: RestApiId) = Try {
     val request = new GetResourcesRequest()

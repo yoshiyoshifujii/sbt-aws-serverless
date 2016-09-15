@@ -19,6 +19,8 @@ object AWSApiGatewayPlugin extends AutoPlugin {
     lazy val getStages = taskKey[Unit]("")
     lazy val getDeployments = taskKey[Unit]("")
     lazy val getResources = taskKey[Unit]("")
+    lazy val deleteStages = taskKey[Unit]("")
+    lazy val deleteDeployments = taskKey[Unit]("")
 
     lazy val awsRegion = settingKey[String]("")
     lazy val awsAccountId = settingKey[String]("")
@@ -155,6 +157,16 @@ object AWSApiGatewayPlugin extends AutoPlugin {
     getResources := {
       AWSApiGatewayRestApi(awsRegion.value)
         .printResources(awsApiGatewayRestApiId.value)
+        .get
+    },
+    deleteDeployments := {
+      AWSApiGatewayRestApi(awsRegion.value)
+        .deleteDeployments(awsApiGatewayRestApiId.value)
+        .get
+    },
+    deleteStages := {
+      AWSApiGatewayRestApi(awsRegion.value)
+        .deleteStages(awsApiGatewayRestApiId.value)
         .get
     }
   )

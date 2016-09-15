@@ -1,8 +1,9 @@
 package com.github.yoshiyoshifujii.aws
 
 import com.github.yoshiyoshifujii.aws.apigateway.{AWSApiGatewayAuthorize, Uri}
-import com.github.yoshiyoshifujii.aws.lambda.AWSLambda
 import sbt._
+
+import scala.util.Try
 
 object AWSCustomAuthorizerPlugin extends AutoPlugin {
 
@@ -30,21 +31,9 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
       val region = awsRegion.value
       val lambdaName = awsLambdaFunctionName.value
       val jar = sbtassembly.AssemblyKeys.assembly.value
-      val lambda = new AWSLambda(region)
-
-      lazy val deployLambda = lambda.deploy(
-        functionName = lambdaName,
-        role = awsLambdaRole.value,
-        handler = awsLambdaHandler.value,
-        bucketName = awsLambdaS3Bucket.value,
-        jar = jar,
-        description = awsLambdaDescription.?.value,
-        timeout = awsLambdaTimeout.?.value,
-        memorySize = awsLambdaMemorySize.?.value
-      )
 
       (for {
-        lambdaArn <- deployLambda
+        lambdaArn <- Try(deployLambda.value)
         _ = {println(s"Lambda Deploy: $lambdaArn")}
         authorizerId <- AWSApiGatewayAuthorize(region).deployAuthorizer(
           restApiId = awsApiGatewayRestApiId.value,
