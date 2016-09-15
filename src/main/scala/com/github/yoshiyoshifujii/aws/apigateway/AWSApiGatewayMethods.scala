@@ -70,6 +70,17 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
       resources <- getResources(restApiId)
     } yield resources.getItems.find(_.getPath == path)
 
+  def updateMethod(resourceId: ResourceId,
+                   patchOperatios: PatchOperation*) = Try {
+    val request = new UpdateMethodRequest()
+      .withRestApiId(restApiId)
+      .withResourceId(resourceId)
+      .withHttpMethod(httpMethod)
+      .withPatchOperations(patchOperatios)
+
+    client.updateMethod(request)
+  }
+
   def deploy(uri: Uri,
              requestTemplates: RequestTemplates,
              responseTemplates: ResponseTemplates): Try[Option[Resource]] = {
