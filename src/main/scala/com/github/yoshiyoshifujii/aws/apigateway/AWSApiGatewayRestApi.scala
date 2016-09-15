@@ -219,9 +219,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
 
   def printResources(restApiId: RestApiId) = {
     lazy val getResourceMethodKeys = (r: Resource) =>
-      Option(r.getResourceMethods) map { m =>
-        ("" /: m.keys)(_ + "," + _)
-      } getOrElse ""
+      Option(r.getResourceMethods) map(_.keys.mkString(",")) getOrElse ""
 
     for {
       l <- getResources(restApiId)
@@ -229,7 +227,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
       val p = CliFormatter(
         restApiId,
         "Resource Id" -> 15,
-        "Resource Path" -> 30,
+        "Resource Path" -> 50,
         "Method Keys" -> 30
       ).print3(
         l.getItems map { r =>
