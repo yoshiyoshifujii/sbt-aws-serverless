@@ -18,6 +18,9 @@ object AWSApiGatewayPlugin extends AutoPlugin {
     lazy val updateStages = inputKey[Unit]("")
     lazy val getStages = taskKey[Unit]("")
     lazy val getDeployments = taskKey[Unit]("")
+    lazy val getResources = taskKey[Unit]("")
+    lazy val deleteStages = taskKey[Unit]("")
+    lazy val deleteDeployments = taskKey[Unit]("")
 
     lazy val awsRegion = settingKey[String]("")
     lazy val awsAccountId = settingKey[String]("")
@@ -32,11 +35,11 @@ object AWSApiGatewayPlugin extends AutoPlugin {
 
   override lazy val projectSettings = Seq(
     getRestApis := {
-      val api = new AWSApiGatewayRestApi(awsRegion.value)
+      val api = AWSApiGatewayRestApi(awsRegion.value)
       api.printGets.get
     },
     createApiGateway := {
-      val api = new AWSApiGatewayRestApi(awsRegion.value)
+      val api = AWSApiGatewayRestApi(awsRegion.value)
       val res = spaceDelimited("<arg>").parsed match {
         case Seq(restApiName) =>
           api.create(restApiName, None).get
@@ -47,8 +50,8 @@ object AWSApiGatewayPlugin extends AutoPlugin {
       }
       println(s"ApiGateway created: ${res.getId}")
     },
-    deleteApiGateway := {
-      val api = new AWSApiGatewayRestApi(awsRegion.value)
+    deleteApiGateway := ? {
+      val api = AWSApiGatewayRestApi(awsRegion.value)
       spaceDelimited("<arg>").parsed match {
         case Seq(restApiId) =>
           api.delete(restApiId).get
@@ -58,7 +61,7 @@ object AWSApiGatewayPlugin extends AutoPlugin {
       }
     },
     putApiGateway := {
-      val api = new AWSApiGatewayRestApi(awsRegion.value)
+      val api = AWSApiGatewayRestApi(awsRegion.value)
       api.put(
         restApiId = awsApiGatewayRestApiId.value,
         body = awsApiGatewayYAMLFile.value,
@@ -68,7 +71,7 @@ object AWSApiGatewayPlugin extends AutoPlugin {
     deployStages := {
       val restApiId = awsApiGatewayRestApiId.value
       val variables = awsApiGatewayStageVariables.?.value
-      val api = new AWSApiGatewayRestApi(awsRegion.value)
+      val api = AWSApiGatewayRestApi(awsRegion.value)
       val stages = awsApiGatewayStages.value
 
       lazy val createDeployment = (sn: String, sd: Option[String]) =>
@@ -101,7 +104,7 @@ object AWSApiGatewayPlugin extends AutoPlugin {
     createDeployment := {
       val restApiId = awsApiGatewayRestApiId.value
       val variables = awsApiGatewayStageVariables.?.value
-      val api = new AWSApiGatewayRestApi(awsRegion.value)
+      val api = AWSApiGatewayRestApi(awsRegion.value)
       spaceDelimited("<arg>").parsed match {
         case Seq(stageName, stageDescription) =>
           api.createDeployment(
@@ -125,7 +128,7 @@ object AWSApiGatewayPlugin extends AutoPlugin {
     },
     updateStages := {
       val restApiId = awsApiGatewayRestApiId.value
-      val api = new AWSApiGatewayRestApi(awsRegion.value)
+      val api = AWSApiGatewayRestApi(awsRegion.value)
       val stages = awsApiGatewayStages.value
 
       spaceDelimited("<arg>").parsed match {
@@ -142,12 +145,29 @@ object AWSApiGatewayPlugin extends AutoPlugin {
       }
     },
     getStages := {
-      val api = new AWSApiGatewayRestApi(awsRegion.value)
-      api.printStages(awsApiGatewayRestApiId.value).get
+      AWSApiGatewayRestApi(awsRegion.value)
+        .printStages(awsApiGatewayRestApiId.value)
+        .get
     },
     getDeployments := {
-      val api = new AWSApiGatewayRestApi(awsRegion.value)
-      api.printDeployments(awsApiGatewayRestApiId.value).get
+      AWSApiGatewayRestApi(awsRegion.value)
+        .printDeployments(awsApiGatewayRestApiId.value)
+        .get
+    },
+    getResources := {
+      AWSApiGatewayRestApi(awsRegion.value)
+        .printResources(awsApiGatewayRestApiId.value)
+        .get
+    },
+    deleteDeployments := ? {
+      AWSApiGatewayRestApi(awsRegion.value)
+        .deleteDeployments(awsApiGatewayRestApiId.value)
+        .get
+    },
+    deleteStages := ? {
+      AWSApiGatewayRestApi(awsRegion.value)
+        .deleteStages(awsApiGatewayRestApiId.value)
+        .get
     }
   )
 }

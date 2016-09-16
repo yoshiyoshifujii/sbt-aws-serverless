@@ -2,39 +2,12 @@ package com.github.yoshiyoshifujii.aws.apigateway
 
 import java.io.File
 
-import com.amazonaws.regions.RegionUtils
-import com.amazonaws.services.apigateway.AmazonApiGatewayClient
 import com.amazonaws.services.apigateway.model._
-import com.github.yoshiyoshifujii.aws.AWSWrapper
 import com.github.yoshiyoshifujii.cliformatter.CliFormatter
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.util.Try
-
-trait AWSApiGatewayWrapper extends AWSWrapper {
-
-  type Region = String
-  type RestApiId = String
-  type StageName = String
-  type StageDescription = String
-  type DeploymentId = String
-  type StageVariables = Map[String, String]
-
-  val regionName: String
-  lazy val client = {
-    val c = new AmazonApiGatewayClient()
-    c.setRegion(RegionUtils.getRegion(regionName))
-    c
-  }
-
-  protected def toOpt[A](f: => A) =
-    try {
-      Some(f)
-    } catch {
-      case e: NotFoundException => None
-    }
-}
 
 trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
 
@@ -75,7 +48,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
         "Rest APIs",
         "Created Date" -> 30,
         "Rest API Id" -> 15,
-        "Rest API Name" -> 20,
+        "Rest API Name" -> 30,
         "Description" -> 30
       ).print4(
         l.getItems map { d =>
@@ -122,6 +95,44 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
     client.createDeployment(request)
   }
 
+  def deleteDeployment(restApiId: RestApiId,
+                       deploymentId: DeploymentId) = Try {
+    val request = new DeleteDeploymentRequest()
+      .withRestApiId(restApiId)
+      .withDeploymentId(deploymentId)
+
+    client.deleteDeployment(request)
+  }
+
+  def getDeployments(restApiId: RestApiId) = Try {
+    val request = new GetDeploymentsRequest()
+      .withRestApiId(restApiId)
+
+    client.getDeployments(request)
+  }
+
+  def printDeployments(restApiId: RestApiId) = {
+    for {
+      l <- getDeployments(restApiId)
+    } yield {
+      val p = CliFormatter(
+        restApiId,
+        "Created Date" -> 30,
+        "Deployment Id" -> 15,
+        "Description" -> 30
+      ).print3(
+        l.getItems map { d =>
+          (d.getCreatedDate.toString, d.getId, d.getDescription)
+        }: _*)
+      println(p)
+    }
+  }
+
+  def deleteDeployments(restApiId: RestApiId) =
+    for {
+      l <- getDeployments(restApiId)
+    } yield l.getItems foreach(i => deleteDeployment(restApiId, i.getId))
+
   def createStage(restApiId: RestApiId,
                   stageName: StageName,
                   deploymentId: DeploymentId,
@@ -162,6 +173,15 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
     client.updateStage(request)
   }
 
+  def deleteStage(restApiId: RestApiId,
+                  stageName: StageName) = Try {
+    val request = new DeleteStageRequest()
+      .withRestApiId(restApiId)
+      .withStageName(stageName)
+
+    client.deleteStage(request)
+  }
+
   def createOrUpdateStage(restApiId: RestApiId,
                           stageName: StageName,
                           deploymentId: DeploymentId,
@@ -188,30 +208,6 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
     } yield res
   }
 
-  def getDeployments(restApiId: RestApiId) = Try {
-    val request = new GetDeploymentsRequest()
-      .withRestApiId(restApiId)
-
-    client.getDeployments(request)
-  }
-
-  def printDeployments(restApiId: RestApiId) = {
-    for {
-      l <- getDeployments(restApiId)
-    } yield {
-      val p = CliFormatter(
-        restApiId,
-        "Created Date" -> 30,
-        "Deployment Id" -> 15,
-        "Description" -> 30
-      ).print3(
-        l.getItems map { d =>
-          (d.getCreatedDate.toString, d.getId, d.getDescription)
-        }: _*)
-      println(p)
-    }
-  }
-
   def getStages(restApiId: RestApiId) = Try {
     val request = new GetStagesRequest()
       .withRestApiId(restApiId)
@@ -236,95 +232,11 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
       println(p)
     }
   }
-}
-class AWSApiGatewayRestApi(val regionName: String) extends AWSApiGatewayRestApiWrapper
 
-case class Uri(regionName: String,
-               awsAccountId: String,
-               lambdaName: String,
-               lambdaAlias: Option[String]) {
-  def value = Seq(
-    "arn",
-    "aws",
-    "apigateway",
-    regionName,
-    "lambda",
-    "path/2015-03-31/functions/arn",
-    "aws",
-    "lambda",
-    regionName,
-    awsAccountId,
-    "function",
-    lambdaAlias
-      .map(a => s"$lambdaName:$a/invocations")
-      .getOrElse(s"$lambdaName/invocations")
-  ).mkString(":")
-}
-
-case class RequestTemplates(values: (String, String)*) {
-  def toMap = values.toMap
-}
-
-case class ResponseTemplates(values: ResponseTemplate*)
-
-case class ResponseTemplate(statusCode: String,
-                            selectionPattern: Option[String],
-                            templates: (String, String)*)
-
-trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayWrapper {
-
-  type ResourceId = String
-  type HttpMethod = String
-  type StatusCode = String
-  type SelectionPattern = String
-
-  def putIntegration(restApiId: RestApiId,
-                     resourceId: ResourceId,
-                     httpMethod: HttpMethod,
-                     uri: Uri,
-                     requestTemplates: RequestTemplates) = Try {
-    val request = new PutIntegrationRequest()
-      .withRestApiId(restApiId)
-      .withResourceId(resourceId)
-      .withHttpMethod(httpMethod)
-      .withType(IntegrationType.AWS)
-      .withIntegrationHttpMethod("POST")
-      .withUri(uri.value)
-      .withRequestTemplates(requestTemplates.toMap)
-      .withPassthroughBehavior("WHEN_NO_TEMPLATES")
-
-    client.putIntegration(request)
-  }
-
-  def putIntegrationResponse(restApiId: RestApiId,
-                             resourceId: ResourceId,
-                             httpMethod: HttpMethod,
-                             statusCode: StatusCode,
-                             selectionPattern: Option[SelectionPattern],
-                             responseTemplates: (String, String)*) = Try {
-    val request = new PutIntegrationResponseRequest()
-      .withRestApiId(restApiId)
-      .withResourceId(resourceId)
-      .withHttpMethod(httpMethod)
-      .withStatusCode(statusCode)
-    selectionPattern.foreach(request.setSelectionPattern)
-
-    if (responseTemplates.nonEmpty)
-      request.setResponseTemplates(responseTemplates.toMap.asJava)
-
-    client.putIntegrationResponse(request)
-  }
-
-  def getIntegration(restApiId: RestApiId,
-                     resourceId: ResourceId,
-                     httpMethod: HttpMethod) = Try {
-    val request = new GetIntegrationRequest()
-      .withRestApiId(restApiId)
-      .withResourceId(resourceId)
-      .withHttpMethod(httpMethod)
-
-    toOpt(client.getIntegration(request))
-  }
+  def deleteStages(restApiId: RestApiId) =
+    for {
+      l <- getStages(restApiId)
+    } yield l.getItem.foreach(i => deleteStage(restApiId, i.getStageName))
 
   def getResources(restApiId: RestApiId) = Try {
     val request = new GetResourcesRequest()
@@ -333,36 +245,26 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayWrapper {
     client.getResources(request)
   }
 
-  def getResource(restApiId: RestApiId,
-                  path: String) = {
+  def printResources(restApiId: RestApiId) = {
+    lazy val getResourceMethodKeys = (r: Resource) =>
+      Option(r.getResourceMethods) map(_.keys.mkString(",")) getOrElse ""
+
     for {
-      resources <- getResources(restApiId)
-    } yield resources.getItems.find(_.getPath == path)
+      l <- getResources(restApiId)
+    } yield {
+      val p = CliFormatter(
+        restApiId,
+        "Resource Id" -> 15,
+        "Resource Path" -> 50,
+        "Method Keys" -> 30
+      ).print3(
+        l.getItems map { r =>
+          (r.getId, r.getPath, getResourceMethodKeys(r))
+        }: _*)
+      println(p)
+    }
   }
 
-  def deploy(restApiId: RestApiId,
-             path: String,
-             httpMethod: String,
-             uri: Uri,
-             requestTemplates: RequestTemplates,
-             responseTemplates: ResponseTemplates): Try[Option[Resource]] = {
-    for {
-      resource <- getResource(restApiId, path)
-      r <- Try {
-        for {
-          r <- resource
-          resourceId = r.getId
-        } yield (for {
-          i <- putIntegration(restApiId, resourceId, httpMethod, uri, requestTemplates)
-          irs <- Try {
-            responseTemplates.values map { resT =>
-              putIntegrationResponse(restApiId, resourceId, httpMethod, resT.statusCode, resT.selectionPattern, resT.templates: _*).get
-            }
-          }
-        } yield r).get
-      }
-    } yield r
-  }
 }
-class AWSApiGatewayMethods(val regionName: String) extends AWSApiGatewayMethodsWrapper
+case class AWSApiGatewayRestApi(regionName: String) extends AWSApiGatewayRestApiWrapper
 
