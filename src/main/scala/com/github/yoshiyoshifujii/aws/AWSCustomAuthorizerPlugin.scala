@@ -83,6 +83,16 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
         regionName = region,
         restApiId = awsApiGatewayRestApiId.value
       ).deleteAuthorizer(awsAuthorizerName.value).get
+    },
+    unDeploy := {
+      val region = awsRegion.value
+      for {
+        l <- AWSLambda(region).delete(awsLambdaFunctionName.value)
+        a <- AWSApiGatewayAuthorize(
+          regionName = region,
+          restApiId = awsApiGatewayRestApiId.value
+        ).deleteAuthorizer(awsAuthorizerName.value)
+      } yield a
     }
   )
 }
