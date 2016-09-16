@@ -117,6 +117,25 @@ trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayWrapper {
     } yield id
   }
 
+  def deleteAuthorizer(name: String) = {
+    lazy val deleteAuthorizer = (authorizerId: AuthorizerId) => {
+      val request = new DeleteAuthorizerRequest()
+        .withRestApiId(restApiId)
+        .withAuthorizerId(authorizerId)
+
+      client.deleteAuthorizer(request)
+    }
+
+    for {
+      aOp <- getAuthorizer(name)
+      d <- Try {
+        aOp map { a =>
+          deleteAuthorizer(a.getId)
+        } getOrElse(throw new NotFoundException(s"authorizer not found: $name"))
+      }
+    } yield d
+  }
+
 }
 case class AWSApiGatewayAuthorize(regionName: String,
                                   restApiId: RestApiId) extends AWSApiGatewayAuthorizeWrapper
