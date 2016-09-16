@@ -172,23 +172,6 @@ object AWSServerlessPlugin extends AutoPlugin {
         withAuth(method)(AWSApiGatewayAuthorize(region, restApiId))(awsMethodAuthorizerName.?.value)
       ).get
     },
-    deployResource := {
-      val region = AWSApiGatewayPlugin.autoImport.awsRegion.value
-      val lambdaName = awsLambdaFunctionName.value
-      new AWSApiGatewayMethods(region).deploy(
-        restApiId = AWSApiGatewayPlugin.autoImport.awsApiGatewayRestApiId.value,
-        path = awsApiGatewayResourcePath.value,
-        httpMethod = awsApiGatewayResourceHttpMethod.value,
-        uri = Uri(
-          region,
-          AWSApiGatewayPlugin.autoImport.awsAccountId.value,
-          lambdaName,
-          awsApiGatewayResourceUriLambdaAlias.?.value
-        ),
-        requestTemplates = RequestTemplates(awsApiGatewayIntegrationRequestTemplates.value: _*),
-        responseTemplates = awsApiGatewayIntegrationResponseTemplates.value
-      ).get
-    },
     listLambdaVersions := {
       val region = awsRegion.value
       AWSLambda(region)
