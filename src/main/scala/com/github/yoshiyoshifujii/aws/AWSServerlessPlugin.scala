@@ -15,6 +15,7 @@ object AWSServerlessPlugin extends AutoPlugin {
     lazy val deployResource = taskKey[Unit]("")
     lazy val listLambdaVersions = taskKey[Unit]("")
     lazy val listLambdaAliases = taskKey[Unit]("")
+    lazy val unDeploy = taskKey[Unit]("")
 
     lazy val awsLambdaFunctionName = settingKey[String]("")
     lazy val awsLambdaDescription = settingKey[String]("")
@@ -173,6 +174,24 @@ object AWSServerlessPlugin extends AutoPlugin {
       AWSLambda(region)
         .printListAliases(awsLambdaFunctionName.value)
         .get
+    },
+    unDeploy := {
+      val region = awsRegion.value
+      val lambdaName = awsLambdaFunctionName.value
+      val lambda = AWSLambda(region)
+      val method = AWSApiGatewayMethods(
+        regionName = region,
+        restApiId = awsApiGatewayRestApiId.value,
+        path = awsApiGatewayResourcePath.value,
+        httpMethod = awsApiGatewayResourceHttpMethod.value
+      )
+
+      (for {
+        _ <- lambda.delete(lambdaName)
+        _ = {println(s"Lambda deleted: $lambdaName")}
+        resource <- method.upDeploy()
+        _ = {println(s"Resouce deleted")}
+      } yield Unit).get
     }
   )
 }
