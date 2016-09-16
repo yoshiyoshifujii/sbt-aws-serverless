@@ -38,7 +38,7 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
 
       lazy val deployLambda = {
         AWSLambda(region).deploy(
-          functionName = awsLambdaFunctionName.value,
+          functionName = lambdaName,
           role = awsLambdaRole.value,
           handler = awsLambdaHandler.value,
           bucketName = awsLambdaS3Bucket.value,
