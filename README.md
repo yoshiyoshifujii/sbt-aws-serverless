@@ -24,6 +24,12 @@ Add the `AWSServerlessPlugin` auto-plugin to your build.sbt:
 enablePlugins(AWSServerlessPlugin)
 ```
 
+Add the `AWSCustomAuthorizerPlugin` auto-plugin to your build.sbt:
+
+```sbt
+enablePlugins(AWSCustomAuthorizerPlugin)
+```
+
 ## Usage
 
 `sbt createApiGateway [name]` creates a new Amazon API Gateway Rest API.
@@ -66,6 +72,16 @@ enablePlugins(AWSServerlessPlugin)
 | awsApiGatewayIntegrationRequestTemplates  | Represents a map of Velocity templates.                                     |
 | awsApiGatewayIntegrationResponseTemplates | Specifies a put integration response's templates.                           |
 
+
+### AWSCustomAuthorizerPlugin
+
+| sbt setting                               | Description                                                                 |
+|-------------------------------------------|-----------------------------------------------------------------------------|
+| awsAuthorizerName                         | The name of the authorizer.                                                 |
+| awsIdentitySourceHeaderName               | The source of the identity in an incoming request.                          |
+| awsIdentityValidationExpression           | A validation expression for the incoming identity.                          |
+| awsAuthorizerResultTtlInSeconds           | The TTL of cached authorizer results.                                       |
+
 An example configuration might look like this:
 
 ```sbt
@@ -91,63 +107,84 @@ val assemblySettings = Seq(
 )
 
 val awsSettings = Seq(
-  awsRegion := "us-east-1",
-  awsAccountId := "<AWS Account ID>"
+  awsRegion := "<Region>",
+  awsAccountId := "<AccountId>"
 )
 
-val apiGatewaySettings = Seq(
-  awsApiGatewayRestApiId := "<REST API ID>",
+val apiGatewaySettings = awsSettings ++ Seq(
+  awsApiGatewayRestApiId := "<Rest Api Id>",
   awsApiGatewayYAMLFile := file("./swagger.yaml"),
   awsApiGatewayResourceUriLambdaAlias := "${stageVariables.env}",
   awsApiGatewayStages := Seq(
-    "it" -> Some("integration stage"),
-    "ops" -> None,
-    "staging" -> Some("staging stage")
+    "dev" -> Some("development stage"),
+    "test" -> Some("test stage"),
+    "v1" -> Some("v1 stage")
   ),
   awsApiGatewayStageVariables := Map(
-    "it" -> Map("env" -> "it", "region" -> "us-east-1"),
-    "ops" -> Map("env" -> "ops", "region" -> "us-east-1"),
-    "staging" -> Map("env" -> "staging", "region" -> "us-east-1")
+    "dev" -> Map("env" -> "dev", "region" -> "us-east-1"),
+    "test" -> Map("env" -> "test", "region" -> "us-east-1"),
+    "v1" -> Map("env" -> "production", "region" -> "us-east-1")
   )
 )
 
-val lambdaSettings = Seq(
+val lambdaSettings = apiGatewaySettings ++ Seq(
   awsLambdaFunctionName := s"${name.value}",
-  awsLambdaRole := "<ROLE ARN>",
-  awsLambdaS3Bucket := "<S3 Bucket>",
+  awsLambdaDescription := "sample-serverless",
+  awsLambdaRole := "<Role Arn>",
+  awsLambdaTimeout := 15,
+  awsLambdaMemorySize := 1536,
+  awsLambdaS3Bucket := "<Bucket Name>",
   awsLambdaDeployDescription := s"${version.value}",
   awsLambdaAliasNames := Seq(
-    "it", "ops", "staging"
+    "test", "production"
   )
-) ++ apiGatewaySettings
+)
 
 lazy val root = (project in file(".")).
   enablePlugins(AWSApiGatewayPlugin).
   aggregate(hello).
   settings(commonSettings: _*).
-  settings(awsSettings: _*).
   settings(apiGatewaySettings: _*)
 
 lazy val hello = (project in file("./modules/hello")).
   enablePlugins(AWSServerlessPlugin).
   settings(commonSettings: _*).
   settings(assemblySettings: _*).
-  settings(awsSettings: _*).
   settings(lambdaSettings: _*).
   settings(
-    name := "Hello",
+    name := "SampleHello",
     libraryDependencies ++= Seq(
-      "com.amazonaws" % "aws-lambda-java-core" % "1.1.0"
+      "com.amazonaws" % "aws-lambda-java-core" % "1.1.0",
+      "io.spray" %%  "spray-json" % "1.3.2"
     ),
-    awsLambdaHandler := "com.sample.Hello::handleRequest",
+    awsLambdaHandler := "com.example.Hello::handleRequest",
     awsApiGatewayResourcePath := "/hellos",
     awsApiGatewayResourceHttpMethod := "GET",
     awsApiGatewayIntegrationRequestTemplates := Seq(
-      "application/json" -> """{"stage":{"env":"$stageVariables.env","region":"$stageVariables.region"},"company_id":"$input.params('company-id')","body":$input.json('$')}"""
+      "application/json" ->
+        """{"stage":{"env":"$stageVariables.env","region":"$stageVariables.region"},"body":$input.json('$')}"""
     ),
     awsApiGatewayIntegrationResponseTemplates := ResponseTemplates(
       ResponseTemplate("200", None)
-    )
+    ),
+    awsMethodAuthorizerName := "SampleAuth"
   )
-```
 
+lazy val auth = (project in file("./modules/auth")).
+  enablePlugins(AWSCustomAuthorizerPlugin).
+  settings(commonSettings: _*).
+  settings(assemblySettings: _*).
+  settings(lambdaSettings: _*).
+  settings(
+    name := "SampleAuth",
+    libraryDependencies ++= Seq(
+      "com.amazonaws" % "aws-lambda-java-core" % "1.1.0",
+      "io.spray" %%  "spray-json" % "1.3.2"
+    ),
+    awsLambdaHandler := "com.example.Auth::handleRequest",
+    awsAuthorizerName := "SampleAuth",
+    awsIdentitySourceHeaderName := "Authorization",
+    awsAuthorizerResultTtlInSeconds := 3000
+  )
+
+```
