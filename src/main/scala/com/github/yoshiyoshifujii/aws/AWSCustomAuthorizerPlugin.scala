@@ -11,6 +11,7 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
   object autoImport {
     lazy val getAuthorizers = taskKey[Unit]("")
     lazy val deployAuthorizer = taskKey[String]("")
+    lazy val deleteAuthorizer = taskKey[Unit]("")
 
     lazy val awsAuthorizerName = settingKey[String]("")
     lazy val awsIdentitySourceHeaderName = settingKey[String]("")
@@ -75,6 +76,13 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
         )
         _ = println(s"API Gateway Authorizer Deploy: $authorizeId")
       } yield authorizeId).get
+    },
+    deleteAuthorizer := {
+      val region = awsRegion.value
+      AWSApiGatewayAuthorize(
+        regionName = region,
+        restApiId = awsApiGatewayRestApiId.value
+      ).deleteAuthorizer(awsAuthorizerName.value).get
     }
   )
 }
