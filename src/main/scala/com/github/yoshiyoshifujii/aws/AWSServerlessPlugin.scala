@@ -32,6 +32,8 @@ object AWSServerlessPlugin extends AutoPlugin {
     lazy val awsApiGatewayResourceUriLambdaAlias = settingKey[String]("")
     lazy val awsApiGatewayIntegrationRequestTemplates = settingKey[Seq[(String, String)]]("")
     lazy val awsApiGatewayIntegrationResponseTemplates = settingKey[ResponseTemplates]("")
+
+    lazy val awsMethodAuthorizerName = settingKey[String]("")
   }
 
   import autoImport._
@@ -146,13 +148,16 @@ object AWSServerlessPlugin extends AutoPlugin {
     },
     deployResource := {
       val region = awsRegion.value
+      val restApiId = awsApiGatewayRestApiId.value
       val lambdaName = awsLambdaFunctionName.value
-      AWSApiGatewayMethods(
+      val method = AWSApiGatewayMethods(
         regionName = region,
-        restApiId = awsApiGatewayRestApiId.value,
+        restApiId = restApiId,
         path = awsApiGatewayResourcePath.value,
         httpMethod = awsApiGatewayResourceHttpMethod.value
-      ).deploy(
+      )
+
+      method.deploy(
         uri = Uri(
           region,
           awsAccountId.value,
@@ -160,7 +165,20 @@ object AWSServerlessPlugin extends AutoPlugin {
           awsApiGatewayResourceUriLambdaAlias.?.value
         ),
         requestTemplates = RequestTemplates(awsApiGatewayIntegrationRequestTemplates.value: _*),
-        responseTemplates = awsApiGatewayIntegrationResponseTemplates.value
+        responseTemplates = awsApiGatewayIntegrationResponseTemplates.value,
+        resourceId => Try {
+          awsMethodAuthorizerName.?.value map { name =>
+            for {
+              aOp <- AWSApiGatewayAuthorize(region, restApiId).getAuthorizer(name)
+            } yield aOp map { a =>
+              method.updateMethod(
+                resourceId = resourceId,
+                "/authorizationType" -> "CUSTOM",
+                "/authorizerId" -> a.getId
+              )
+            } getOrElse sys.error(s"Custome Authorizer is nothing. $name")
+          }
+        }
       ).get
     },
     listLambdaVersions := {

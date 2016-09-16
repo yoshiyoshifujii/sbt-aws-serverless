@@ -14,6 +14,8 @@ package object apigateway {
   type StatusCode = String
   type SelectionPattern = String
   type AuthorizerId = String
+  type PatchPath = String
+  type PatchValue = String
 
   case class Uri(regionName: String,
                  awsAccountId: String,

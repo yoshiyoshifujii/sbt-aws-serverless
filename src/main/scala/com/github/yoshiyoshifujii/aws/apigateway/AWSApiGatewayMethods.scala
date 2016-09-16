@@ -89,12 +89,21 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     } yield resources.getItems.find(_.getPath == path)
 
   def updateMethod(resourceId: ResourceId,
-                   patchOperatios: PatchOperation*) = Try {
+                   patchOperatios: (PatchPath, PatchValue)*) = Try {
+
+    lazy val generatePatch =
+      (path: PatchPath) =>
+        (value: PatchValue) =>
+          new PatchOperation()
+            .withOp(Op.Replace)
+            .withPath(path)
+            .withValue(value)
+
     val request = new UpdateMethodRequest()
       .withRestApiId(restApiId)
       .withResourceId(resourceId)
       .withHttpMethod(httpMethod)
-      .withPatchOperations(patchOperatios)
+      .withPatchOperations(patchOperatios.map(g => generatePatch(g._1)(g._2)).asJava)
 
     client.updateMethod(request)
   }
