@@ -8,21 +8,21 @@ import scala.util.{Failure, Success}
 
 class AWSApiGatewaySpec extends FlatSpec with BeforeAndAfterAll with Matchers {
 
-  val restApiName = "sample-api"
-  var restApiId: String = ""
+  val RestApiName = "sample-api"
+  var RestApiId: String = ""
 
   override def beforeAll(): Unit = {
-    restApiId = new WithFixture {}.create(restApiName, Some("hoge")).get.getId
-    println(s"create rest api: $restApiId")
+    RestApiId = new WithFixture {}.create(RestApiName, Some("hoge")).get.getId
+    println(s"create rest api: $RestApiId")
   }
 
   override def afterAll(): Unit = {
-    new WithFixture {}.delete(restApiId).get
+    new WithFixture {}.delete(RestApiId).get
   }
 
   "AWSApiGatewayRestApiWrapper" should "success" in new WithFixture {
-    val restApi = get(restApiId).get.get
-    assert(restApi.getName === restApiName)
+    val restApi = get(RestApiId).get.get
+    assert(restApi.getName === RestApiName)
     assert(restApi.getDescription === "hoge")
   }
 
@@ -36,25 +36,27 @@ class AWSApiGatewaySpec extends FlatSpec with BeforeAndAfterAll with Matchers {
   }
 
   "AWSApiGatewayMethodsWrapper" should "success getResource" in new WithFixture2 {
-    assert(getResource(restApiId, "hogehoge").get.isDefined === false)
+    override val restApiId = RestApiId
+    override val path = "/hogehoge"
+    override val httpMethod = "GET"
+    assert(getResource.get.isDefined === false)
   }
 
   it should "success" in new WithFixture2 {
+    override val restApiId = RestApiId
+    override val path = "/hellos"
+    override val httpMethod = "GET"
 
-    val path = "/hellos"
-    val method = "GET"
     val lambdaName = "sampleLambda1"
     val p = put(restApiId, new File("src/test/resources/swagger01.yaml")).get
     assert(p.getName === "sample-api-2")
 
-    val resource = getResource(restApiId, path).get.get
+    val resource = getResource.get.get
 
     val resourceId = resource.getId
 
     putIntegration(
-      restApiId = restApiId,
       resourceId = resourceId,
-      httpMethod = method,
       uri = Uri(regionName, AwsAccountId, lambdaName, Some("${stageVariables.env}")),
       requestTemplates = RequestTemplates("application/json" ->
         """{"stage":{"env":"$stageVariables.env","region":"$stageVariables.region"},"company_id":"$input.params('company-id')","body":$input.json('$')}""")
@@ -63,17 +65,13 @@ class AWSApiGatewaySpec extends FlatSpec with BeforeAndAfterAll with Matchers {
         assert(s.getUri === s"arn:aws:apigateway:$regionName:lambda:path/2015-03-31/functions/arn:aws:lambda:$regionName:$AwsAccountId:function:$lambdaName:$${stageVariables.env}/invocations")
 
         putIntegrationResponse(
-          restApiId = restApiId,
           resourceId = resourceId,
-          httpMethod = method,
           statusCode = "200",
           selectionPattern = None
         ).isSuccess shouldBe true
 
         putIntegrationResponse(
-          restApiId = restApiId,
           resourceId = resourceId,
-          httpMethod = method,
           statusCode = "500",
           selectionPattern = Some(""".*"statusCode":500.*"""),
           "application/json" ->
@@ -88,8 +86,9 @@ class AWSApiGatewaySpec extends FlatSpec with BeforeAndAfterAll with Matchers {
   }
 
   it should "success deploy" in new WithFixture2 {
-    val path = "/hellos"
-    val method = "GET"
+    override val restApiId = RestApiId
+    override val path = "/hellos"
+    override val httpMethod = "GET"
     val lambdaName = "sampleLambda1"
     val p = put(restApiId, new File("src/test/resources/swagger01.yaml")).get
     assert(p.getName === "sample-api-2")
@@ -97,9 +96,6 @@ class AWSApiGatewaySpec extends FlatSpec with BeforeAndAfterAll with Matchers {
     val uri = Uri(regionName, AwsAccountId, lambdaName, Some("${stageVariables.env}"))
 
     deploy(
-      restApiId = restApiId,
-      path = path,
-      httpMethod = method,
       uri = uri,
       requestTemplates = RequestTemplates("application/json" ->
         """{"stage":{"env":"$stageVariables.env","region":"$stageVariables.region"},"company_id":"$input.params('company-id')","body":$input.json('$')}"""),
@@ -115,7 +111,7 @@ class AWSApiGatewaySpec extends FlatSpec with BeforeAndAfterAll with Matchers {
       case Success(s) =>
         s.isDefined shouldBe true
 
-        val i = getIntegration(restApiId, s.get.getId, method).get.get
+        val i = getIntegration(s.get.getId).get.get
         assert(i.getUri === uri.value)
         assert(i.getRequestTemplates.get("application/json") === """{"stage":{"env":"$stageVariables.env","region":"$stageVariables.region"},"company_id":"$input.params('company-id')","body":$input.json('$')}""")
         val ir200 = i.getIntegrationResponses.get("200")

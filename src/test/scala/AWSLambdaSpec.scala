@@ -10,7 +10,7 @@ class AWSLambdaSpec extends FlatSpec with Matchers {
   "AWSLambdaSpec" should "success" in new WithFixture {
     val functionName = "sampleScalaLambda"
 
-    val jar = new File("sample/lambda/target/scala-2.10/sampleScalaLambda-assembly-0.1-SNAPSHOT.jar")
+    val jar = new File("sample/lambda/target/scala-2.10/sampleScalaLambda-assembly-1.1.0-SNAPSHOT.jar")
     jar.exists() === true
 
     get(
@@ -69,7 +69,7 @@ class AWSLambdaSpec extends FlatSpec with Matchers {
   "AWSLambdaSpec" should "success deploy" in new WithFixture {
     val functionName = "sampleScalaLambda2"
 
-    val jar = new File("sample/lambda/target/scala-2.10/sampleScalaLambda-assembly-0.1-SNAPSHOT.jar")
+    val jar = new File("sample/lambda/target/scala-2.10/sampleScalaLambda-assembly-1.1.0-SNAPSHOT.jar")
     jar.exists() === true
 
     deploy(

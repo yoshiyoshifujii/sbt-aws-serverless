@@ -43,7 +43,7 @@ val apiGatewaySettings = Seq(
 val lambdaSettings = Seq(
   awsLambdaFunctionName := s"${name.value}",
   awsLambdaRole := "",
-  awsLambdaS3Bucket := "us-lambda-modules.huzi.me",
+  awsLambdaS3Bucket := "",
   awsLambdaDeployDescription := s"${version.value}",
   awsLambdaAliasNames := Seq(
     "it", "ops", "staging"

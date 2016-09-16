@@ -9,11 +9,13 @@ import scala.util.Try
 object AWSServerlessPlugin extends AutoPlugin {
 
   object autoImport {
+    lazy val deployLambda = taskKey[String]("")
     lazy val deploy = taskKey[File]("")
     lazy val deployDev = taskKey[File]("")
     lazy val deployResource = taskKey[Unit]("")
     lazy val listLambdaVersions = taskKey[Unit]("")
     lazy val listLambdaAliases = taskKey[Unit]("")
+    lazy val unDeploy = taskKey[Unit]("")
 
     lazy val awsLambdaFunctionName = settingKey[String]("")
     lazy val awsLambdaDescription = settingKey[String]("")
@@ -30,28 +32,40 @@ object AWSServerlessPlugin extends AutoPlugin {
     lazy val awsApiGatewayResourceUriLambdaAlias = settingKey[String]("")
     lazy val awsApiGatewayIntegrationRequestTemplates = settingKey[Seq[(String, String)]]("")
     lazy val awsApiGatewayIntegrationResponseTemplates = settingKey[ResponseTemplates]("")
+
+    lazy val awsMethodAuthorizerName = settingKey[String]("")
   }
 
   import autoImport._
+  import AWSApiGatewayPlugin.autoImport._
 
   override def requires = sbtassembly.AssemblyPlugin
 
   override lazy val projectSettings = Seq(
-    deploy := {
-      val region = AWSApiGatewayPlugin.autoImport.awsRegion.value
-      val lambdaName = awsLambdaFunctionName.value
-      val jar = sbtassembly.AssemblyKeys.assembly.value
-      val lambda = new AWSLambda(region)
-
-      lazy val deployLambda = lambda.deploy(
-        functionName = lambdaName,
+    deployLambda := {
+      val region = awsRegion.value
+      AWSLambda(region).deploy(
+        functionName = awsLambdaFunctionName.value,
         role = awsLambdaRole.value,
         handler = awsLambdaHandler.value,
         bucketName = awsLambdaS3Bucket.value,
-        jar = jar,
+        jar = sbtassembly.AssemblyKeys.assembly.value,
         description = awsLambdaDescription.?.value,
         timeout = awsLambdaTimeout.?.value,
         memorySize = awsLambdaMemorySize.?.value
+      ).get
+    },
+    deploy := {
+      val region = awsRegion.value
+      val lambdaName = awsLambdaFunctionName.value
+      val jar = sbtassembly.AssemblyKeys.assembly.value
+      val restApiId = awsApiGatewayRestApiId.value
+      val lambda = AWSLambda(region)
+      val method = AWSApiGatewayMethods(
+        regionName = region,
+        restApiId = restApiId,
+        path = awsApiGatewayResourcePath.value,
+        httpMethod = awsApiGatewayResourceHttpMethod.value
       )
 
       lazy val publish = lambda.publishVersion(
@@ -75,22 +89,21 @@ object AWSServerlessPlugin extends AutoPlugin {
         }
       }
 
-      lazy val deployResource = (v: String) => new AWSApiGatewayMethods(region).deploy(
-        restApiId = AWSApiGatewayPlugin.autoImport.awsApiGatewayRestApiId.value,
-        path = awsApiGatewayResourcePath.value,
-        httpMethod = awsApiGatewayResourceHttpMethod.value,
-        uri = Uri(
-          region,
-          AWSApiGatewayPlugin.autoImport.awsAccountId.value,
-          lambdaName,
-          awsApiGatewayResourceUriLambdaAlias.?.value.map(a => s"$a$v")
-        ),
-        requestTemplates = RequestTemplates(awsApiGatewayIntegrationRequestTemplates.value: _*),
-        responseTemplates = awsApiGatewayIntegrationResponseTemplates.value
-      )
+      lazy val deployResource = (v: String) =>
+        method.deploy(
+          uri = Uri(
+            region,
+            awsAccountId.value,
+            lambdaName,
+            awsApiGatewayResourceUriLambdaAlias.?.value.map(a => s"$a$v")
+          ),
+          requestTemplates = RequestTemplates(awsApiGatewayIntegrationRequestTemplates.value: _*),
+          responseTemplates = awsApiGatewayIntegrationResponseTemplates.value,
+          withAuth(method)(AWSApiGatewayAuthorize(region, restApiId))(awsMethodAuthorizerName.?.value)
+        )
 
       (for {
-        lambdaArn <- deployLambda
+        lambdaArn <- Try(deployLambda.value)
         _ = {println(s"Lambda Deploy: $lambdaArn")}
         v <- publish
         _ = {println(s"Publish Lambda: ${v.getFunctionArn}")}
@@ -101,21 +114,10 @@ object AWSServerlessPlugin extends AutoPlugin {
       } yield jar).get
     },
     deployDev := {
-      val region = AWSApiGatewayPlugin.autoImport.awsRegion.value
+      val region = awsRegion.value
       val lambdaName = awsLambdaFunctionName.value
       val jar = sbtassembly.AssemblyKeys.assembly.value
-      val lambda = new AWSLambda(region)
-
-      lazy val deployLambda = lambda.deploy(
-        functionName = lambdaName,
-        role = awsLambdaRole.value,
-        handler = awsLambdaHandler.value,
-        bucketName = awsLambdaS3Bucket.value,
-        jar = jar,
-        description = awsLambdaDescription.?.value,
-        timeout = awsLambdaTimeout.?.value,
-        memorySize = awsLambdaMemorySize.?.value
-      )
+      val lambda = AWSLambda(region)
 
       lazy val createAliasIfNotExists = Try {
         (for {
@@ -138,28 +140,37 @@ object AWSServerlessPlugin extends AutoPlugin {
         } yield res).get
       }
 
-      lazy val deployResource = new AWSApiGatewayMethods(region).deploy(
-        restApiId = AWSApiGatewayPlugin.autoImport.awsApiGatewayRestApiId.value,
+      (for {
+        lambdaArn <- Try(deployLambda.value)
+        _ = {println(s"Lambda Deploy: $lambdaArn")}
+        v <- createAliasIfNotExists
+        _ = {println(s"Create Alias: $v")}
+        resource <- Try(deployResource.value)
+        _ = {println(s"Api Gateway Deploy")}
+      } yield jar).get
+    },
+    deployResource := {
+      val region = awsRegion.value
+      val restApiId = awsApiGatewayRestApiId.value
+      val lambdaName = awsLambdaFunctionName.value
+      val method = AWSApiGatewayMethods(
+        regionName = region,
+        restApiId = restApiId,
         path = awsApiGatewayResourcePath.value,
-        httpMethod = awsApiGatewayResourceHttpMethod.value,
+        httpMethod = awsApiGatewayResourceHttpMethod.value
+      )
+
+      method.deploy(
         uri = Uri(
           region,
-          AWSApiGatewayPlugin.autoImport.awsAccountId.value,
+          awsAccountId.value,
           lambdaName,
           awsApiGatewayResourceUriLambdaAlias.?.value
         ),
         requestTemplates = RequestTemplates(awsApiGatewayIntegrationRequestTemplates.value: _*),
-        responseTemplates = awsApiGatewayIntegrationResponseTemplates.value
-      )
-
-      (for {
-        lambdaArn <- deployLambda
-        _ = {println(s"Lambda Deploy: $lambdaArn")}
-        v <- createAliasIfNotExists
-        _ = {println(s"Create Alias: $v")}
-        resource <- deployResource
-        _ = {println(s"Api Gateway Deploy")}
-      } yield jar).get
+        responseTemplates = awsApiGatewayIntegrationResponseTemplates.value,
+        withAuth(method)(AWSApiGatewayAuthorize(region, restApiId))(awsMethodAuthorizerName.?.value)
+      ).get
     },
     deployResource := {
       val region = AWSApiGatewayPlugin.autoImport.awsRegion.value
@@ -179,16 +190,64 @@ object AWSServerlessPlugin extends AutoPlugin {
       ).get
     },
     listLambdaVersions := {
-      val region = AWSApiGatewayPlugin.autoImport.awsRegion.value
-      new AWSLambda(region)
+      val region = awsRegion.value
+      AWSLambda(region)
         .printListVersionsByFunction(awsLambdaFunctionName.value)
         .get
     },
     listLambdaAliases := {
-      val region = AWSApiGatewayPlugin.autoImport.awsRegion.value
-      new AWSLambda(region)
+      val region = awsRegion.value
+      AWSLambda(region)
         .printListAliases(awsLambdaFunctionName.value)
         .get
+    },
+    unDeploy := ? {
+      val region = awsRegion.value
+      val lambdaName = awsLambdaFunctionName.value
+      val lambda = AWSLambda(region)
+      val method = AWSApiGatewayMethods(
+        regionName = region,
+        restApiId = awsApiGatewayRestApiId.value,
+        path = awsApiGatewayResourcePath.value,
+        httpMethod = awsApiGatewayResourceHttpMethod.value
+      )
+
+      (for {
+        _ <- lambda.delete(lambdaName)
+        _ = {println(s"Lambda deleted: $lambdaName")}
+        resource <- method.upDeploy()
+        _ = {println(s"Resouce deleted")}
+      } yield unit).get
     }
   )
+
+  private lazy val withAuth =
+    (method: AWSApiGatewayMethods) =>
+      (authorize: AWSApiGatewayAuthorize) =>
+        (authName: Option[String]) =>
+          (resourceId: String) => Try {
+            (authName map { name =>
+              for {
+                aOp <- authorize.getAuthorizer(name)
+                r <- Try {
+                  aOp map { a =>
+                    method.updateMethod(
+                      resourceId = resourceId,
+                      "/authorizationType" -> "CUSTOM",
+                      "/authorizerId" -> a.getId
+                    ).get
+                  } getOrElse(throw new RuntimeException(s"Custome Authorizer is nothing. $name"))
+                }
+              } yield r
+            } getOrElse {
+              method.updateMethod(
+                resourceId = resourceId,
+                "/authorizationType" -> "NONE"
+              )
+            }).get
+            unit
+          }
+
+  private lazy val unit: Unit = {}
+
 }
