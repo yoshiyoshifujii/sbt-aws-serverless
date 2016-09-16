@@ -50,7 +50,7 @@ object AWSApiGatewayPlugin extends AutoPlugin {
       }
       println(s"ApiGateway created: ${res.getId}")
     },
-    deleteApiGateway := {
+    deleteApiGateway := ? {
       val api = AWSApiGatewayRestApi(awsRegion.value)
       spaceDelimited("<arg>").parsed match {
         case Seq(restApiId) =>
@@ -159,12 +159,12 @@ object AWSApiGatewayPlugin extends AutoPlugin {
         .printResources(awsApiGatewayRestApiId.value)
         .get
     },
-    deleteDeployments := {
+    deleteDeployments := ? {
       AWSApiGatewayRestApi(awsRegion.value)
         .deleteDeployments(awsApiGatewayRestApiId.value)
         .get
     },
-    deleteStages := {
+    deleteStages := ? {
       AWSApiGatewayRestApi(awsRegion.value)
         .deleteStages(awsApiGatewayRestApiId.value)
         .get

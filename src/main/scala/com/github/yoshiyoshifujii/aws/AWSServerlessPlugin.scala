@@ -184,7 +184,7 @@ object AWSServerlessPlugin extends AutoPlugin {
         .printListAliases(awsLambdaFunctionName.value)
         .get
     },
-    unDeploy := {
+    unDeploy := ? {
       val region = awsRegion.value
       val lambdaName = awsLambdaFunctionName.value
       val lambda = AWSLambda(region)

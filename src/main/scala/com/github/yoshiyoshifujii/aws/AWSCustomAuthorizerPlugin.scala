@@ -8,11 +8,6 @@ import scala.util.Try
 
 object AWSCustomAuthorizerPlugin extends AutoPlugin {
 
-  protected def yesNoDelete[A](of: String)(f: => A) =
-    SimpleReader.readLine(s"delete $of? ") foreach { a =>
-      if("y" == a.trim.toLowerCase) f
-    }
-
   object autoImport {
     lazy val getAuthorizers = taskKey[Unit]("")
     lazy val deployAuthorizer = taskKey[String]("")
@@ -82,7 +77,7 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
         _ = println(s"API Gateway Authorizer Deploy: $authorizeId")
       } yield authorizeId).get
     },
-    deleteAuthorizer := yesNoDelete("Authorizer") {
+    deleteAuthorizer := ? {
       val region = awsRegion.value
       AWSApiGatewayAuthorize(
         regionName = region,
