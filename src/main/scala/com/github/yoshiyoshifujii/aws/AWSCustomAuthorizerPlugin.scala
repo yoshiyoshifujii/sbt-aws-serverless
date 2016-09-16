@@ -4,10 +4,13 @@ import com.github.yoshiyoshifujii.aws.apigateway.{AWSApiGatewayAuthorize, Uri}
 import com.github.yoshiyoshifujii.aws.lambda.AWSLambda
 import sbt._
 
+import scala.util.Try
+
 object AWSCustomAuthorizerPlugin extends AutoPlugin {
 
   object autoImport {
     lazy val getAuthorizers = taskKey[Unit]("")
+    lazy val deployAuthorizer = taskKey[String]("")
 
     lazy val awsAuthorizerName = settingKey[String]("")
     lazy val awsIdentitySourceHeaderName = settingKey[String]("")
@@ -48,7 +51,14 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
       (for {
         lambdaArn <- deployLambda
         _ = {println(s"Lambda Deploy: $lambdaArn")}
-        authorizerId <- AWSApiGatewayAuthorize(
+        _ <- Try(deployAuthorizer.value)
+      } yield jar).get
+    },
+    deployDev := deploy.value,
+    deployAuthorizer := {
+      val region = awsRegion.value
+      (for {
+        authorizeId <- AWSApiGatewayAuthorize(
           regionName = region,
           restApiId = awsApiGatewayRestApiId.value
         ).deployAuthorizer(
@@ -56,16 +66,15 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
           authorizerUri = Uri(
             region,
             awsAccountId.value,
-            lambdaName,
+            awsLambdaFunctionName.value,
             None
           ),
           identitySourceHeaderName = awsIdentitySourceHeaderName.value,
           identityValidationExpression = awsIdentityValidationExpression.?.value,
           authorizerResultTtlInSeconds = awsAuthorizerResultTtlInSeconds.?.value
         )
-        _ = {println(s"API Gateway Authorizer Deploy: $authorizerId")}
-      } yield jar).get
-    },
-    deployDev := deploy.value
+        _ = println(s"API Gateway Authorizer Deploy: $authorizeId")
+      } yield authorizeId).get
+    }
   )
 }
