@@ -226,6 +226,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
             description = description,
             timeout = timeout,
             memorySize = memorySize)
+          a <- addPermission(c.getFunctionArn)
         } yield c.getFunctionArn
       }
     } yield arn
