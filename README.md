@@ -71,6 +71,12 @@ enablePlugins(AWSCustomAuthorizerPlugin)
 | awsApiGatewayResourceUriLambdaAlias       | Specifies a put integration input's Uniform Resource Identifier (URI).      |
 | awsApiGatewayIntegrationRequestTemplates  | Represents a map of Velocity templates.                                     |
 | awsApiGatewayIntegrationResponseTemplates | Specifies a put integration response's templates.                           |
+| awsMethodAuthorizerName                   | The name of the authorizer.                                                 |
+| awsTestHeaders                            | A key-value map of headers to simulate an incoming invocation request.      |
+| awsTestParameters                         | A key-value map of parameters to simulate an incoming invocation request.   |
+| awsTestPathWithQuerys                     | The URI path, including query string.                                       |
+| awsTestBody                               | The simulated request body of an incoming invocation request.               |
+| awsTestSuccessStatusCode                  | The HTTP status code of success.                                            |
 
 
 ### AWSCustomAuthorizerPlugin
@@ -86,6 +92,13 @@ An example configuration might look like this:
 
 ```sbt
 import com.github.yoshiyoshifujii.aws.apigateway._
+
+lazy val regionName = sys.props.getOrElse("AWS_REGION", "")
+lazy val accountId = sys.props.getOrElse("AWS_ACCOUNT_ID", "")
+lazy val restApiId = sys.props.getOrElse("AWS_REST_API_ID", "")
+lazy val roleArn = sys.props.getOrElse("AWS_ROLE_ARN", "")
+lazy val bucketName = sys.props.getOrElse("AWS_BUCKET_NAME", "")
+lazy val authKey = sys.props.getOrElse("AUTH_KEY", "")
 
 val commonSettings = Seq(
   version := "0.1",
@@ -107,12 +120,12 @@ val assemblySettings = Seq(
 )
 
 val awsSettings = Seq(
-  awsRegion := "<Region>",
-  awsAccountId := "<AccountId>"
+  awsRegion := regionName,
+  awsAccountId := accountId
 )
 
 val apiGatewaySettings = awsSettings ++ Seq(
-  awsApiGatewayRestApiId := "<Rest Api Id>",
+  awsApiGatewayRestApiId := restApiId,
   awsApiGatewayYAMLFile := file("./swagger.yaml"),
   awsApiGatewayResourceUriLambdaAlias := "${stageVariables.env}",
   awsApiGatewayStages := Seq(
@@ -121,19 +134,19 @@ val apiGatewaySettings = awsSettings ++ Seq(
     "v1" -> Some("v1 stage")
   ),
   awsApiGatewayStageVariables := Map(
-    "dev" -> Map("env" -> "dev", "region" -> "us-east-1"),
-    "test" -> Map("env" -> "test", "region" -> "us-east-1"),
-    "v1" -> Map("env" -> "production", "region" -> "us-east-1")
+    "dev" -> Map("env" -> "dev", "region" -> regionName),
+    "test" -> Map("env" -> "test", "region" -> regionName),
+    "v1" -> Map("env" -> "production", "region" -> regionName)
   )
 )
 
 val lambdaSettings = apiGatewaySettings ++ Seq(
   awsLambdaFunctionName := s"${name.value}",
   awsLambdaDescription := "sample-serverless",
-  awsLambdaRole := "<Role Arn>",
+  awsLambdaRole := roleArn,
   awsLambdaTimeout := 15,
   awsLambdaMemorySize := 1536,
-  awsLambdaS3Bucket := "<Bucket Name>",
+  awsLambdaS3Bucket := bucketName,
   awsLambdaDeployDescription := s"${version.value}",
   awsLambdaAliasNames := Seq(
     "test", "production"
@@ -167,7 +180,9 @@ lazy val hello = (project in file("./modules/hello")).
     awsApiGatewayIntegrationResponseTemplates := ResponseTemplates(
       ResponseTemplate("200", None)
     ),
-    awsMethodAuthorizerName := "SampleAuth"
+    awsMethodAuthorizerName := "SampleAuth",
+    awsTestHeaders := Seq("Authorization" -> authKey),
+    awsTestSuccessStatusCode := 200
   )
 
 lazy val auth = (project in file("./modules/auth")).
@@ -186,5 +201,16 @@ lazy val auth = (project in file("./modules/auth")).
     awsIdentitySourceHeaderName := "Authorization",
     awsAuthorizerResultTtlInSeconds := 3000
   )
-
 ```
+
+An example command might look like this:
+
+```sh
+sbt -DAWS_REGION=<Region Name> \
+    -DAWS_ACCOUNT_ID=<AWS Account ID> \
+    -DAWS_REST_API_ID=<Rest Api Id> \
+    -DAWS_ROLE_ARN=arn:aws:iam::<AWS Account ID>:role/<Role Name> \
+    -DAWS_BUCKET_NAME=<Bucket Name> \
+    -DAUTH_KEY=hoge
+```
+
