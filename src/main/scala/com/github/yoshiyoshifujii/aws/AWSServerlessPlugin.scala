@@ -40,6 +40,7 @@ object AWSServerlessPlugin extends AutoPlugin {
     lazy val awsTestParameters = settingKey[Seq[(String, String)]]("")
     lazy val awsTestPathWithQuerys = settingKey[Seq[(String, String)]]("")
     lazy val awsTestBody = settingKey[String]("")
+    lazy val awsTestSuccessStatusCode = settingKey[Int]("")
   }
 
   import autoImport._
@@ -222,13 +223,21 @@ object AWSServerlessPlugin extends AutoPlugin {
             stageName = stageName,
             path = path,
             pathWithQuerys = awsTestPathWithQuerys.?.value.getOrElse(Seq()))
-          request(
-            url = url,
-            method = awsApiGatewayResourceHttpMethod.value,
-            headers = awsTestHeaders.?.value.getOrElse(Seq()),
-            parameters = awsTestParameters.?.value.getOrElse(Seq()),
-            body = awsTestBody.?.value.map(_.getBytes("utf-8"))
-          )
+          (for {
+            response <- request(
+              url = url,
+              method = awsApiGatewayResourceHttpMethod.value,
+              headers = awsTestHeaders.?.value.getOrElse(Seq()),
+              parameters = awsTestParameters.?.value.getOrElse(Seq()),
+              body = awsTestBody.?.value.map(_.getBytes("utf-8"))
+            )
+          } yield {
+            val statusCode = response.getStatusLine.getStatusCode
+            if (Some(statusCode) == awsTestSuccessStatusCode.?.value)
+              println("test method success.")
+            else
+              sys.error(s"test method failed. $statusCode")
+          }).get
         case _ =>
           sys.error("Error testMethod. useage: testMethod <stageName>")
       }
