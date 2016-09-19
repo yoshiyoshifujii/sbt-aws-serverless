@@ -214,3 +214,7 @@ sbt -DAWS_REGION=<Region Name> \
     -DAUTH_KEY=hoge
 ```
 
+## Sample
+
+https://github.com/yoshiyoshifujii/sample-serverless
+
