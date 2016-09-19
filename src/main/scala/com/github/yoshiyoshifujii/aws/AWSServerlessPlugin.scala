@@ -16,6 +16,7 @@ object AWSServerlessPlugin extends AutoPlugin {
     lazy val listLambdaVersions = taskKey[Unit]("")
     lazy val listLambdaAliases = taskKey[Unit]("")
     lazy val unDeploy = taskKey[Unit]("")
+    lazy val testMethod = inputKey[Unit]("")
 
     lazy val awsLambdaFunctionName = settingKey[String]("")
     lazy val awsLambdaDescription = settingKey[String]("")
@@ -34,6 +35,11 @@ object AWSServerlessPlugin extends AutoPlugin {
     lazy val awsApiGatewayIntegrationResponseTemplates = settingKey[ResponseTemplates]("")
 
     lazy val awsMethodAuthorizerName = settingKey[String]("")
+
+    lazy val awsTestHeaders = settingKey[Seq[(String, String)]]("")
+    lazy val awsTestParameters = settingKey[Seq[(String, String)]]("")
+    lazy val awsTestPathWithQuerys = settingKey[Seq[(String, String)]]("")
+    lazy val awsTestBody = settingKey[String]("")
   }
 
   import autoImport._
@@ -201,6 +207,31 @@ object AWSServerlessPlugin extends AutoPlugin {
         resource <- method.upDeploy()
         _ = {println(s"Resouce deleted")}
       } yield unit).get
+    },
+    testMethod := {
+      import complete.DefaultParsers._
+      val region = awsRegion.value
+      val restApiId = awsApiGatewayRestApiId.value
+      val path = awsApiGatewayResourcePath.value
+      spaceDelimited("<arg>").parsed match {
+        case Seq(stageName) =>
+          import com.github.yoshiyoshifujii.aws.http._
+          val url = generateUrl(
+            region = region,
+            restApiId = restApiId,
+            stageName = stageName,
+            path = path,
+            pathWithQuerys = awsTestPathWithQuerys.?.value.getOrElse(Seq()))
+          request(
+            url = url,
+            method = awsApiGatewayResourceHttpMethod.value,
+            headers = awsTestHeaders.?.value.getOrElse(Seq()),
+            parameters = awsTestParameters.?.value.getOrElse(Seq()),
+            body = awsTestBody.?.value.map(_.getBytes("utf-8"))
+          )
+        case _ =>
+          sys.error("Error testMethod. useage: testMethod <stageName>")
+      }
     }
   )
 
