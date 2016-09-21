@@ -43,7 +43,7 @@ package object http {
                   path: String,
                   pathWithQuerys: Seq[(String, String)]) = {
     val p = (path /: pathWithQuerys)((p, q) => p.replaceAll(s"\\{${q._1}\\}", q._2))
-    s"https://$restApiId.execute-api.$region.amazonaws.com/$stageName/$p"
+    s"https://$restApiId.execute-api.$region.amazonaws.com/$stageName$p"
   }
 
   def request(url: String,
