@@ -1,7 +1,10 @@
 package com.github.yoshiyoshifujii.aws
 
+import java.io.ByteArrayOutputStream
+
 import com.github.yoshiyoshifujii.aws.apigateway._
 import com.github.yoshiyoshifujii.aws.lambda.AWSLambda
+import org.apache.http.client.methods.CloseableHttpResponse
 import sbt._
 
 import scala.util.Try
@@ -233,20 +236,31 @@ object AWSServerlessPlugin extends AutoPlugin {
             )
           } yield {
             val statusCode = response.getStatusLine.getStatusCode
-            if (Some(statusCode) == awsTestSuccessStatusCode.?.value) {
-              val out = System.out
-              response.getEntity.writeTo(out)
-              println
-            }
-            else {
+            if (Some(statusCode) == awsTestSuccessStatusCode.?.value)
+              printResponse(url)(response)
+            else
               sys.error(s"test method failed. $statusCode")
-            }
           }).get
         case _ =>
           sys.error("Error testMethod. useage: testMethod <stageName>")
       }
     }
   )
+
+  private lazy val printResponse =
+    (url: String) =>
+      (response: CloseableHttpResponse) => {
+        val out = new ByteArrayOutputStream()
+        for {
+          r <- Option(response)
+          e <- Option(r.getEntity)
+        } yield e.writeTo(out)
+        println(
+          s"""$url
+             |========================================
+             |${out.toString("utf-8")}
+           """.stripMargin)
+      }
 
   private lazy val withAuth =
     (method: AWSApiGatewayMethods) =>
