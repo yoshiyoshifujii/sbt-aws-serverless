@@ -236,7 +236,6 @@ object AWSServerlessPlugin extends AutoPlugin {
             if (Some(statusCode) == awsTestSuccessStatusCode.?.value) {
               val out = System.out
               response.getEntity.writeTo(out)
-              out.close()
               println("test method success.")
             }
             else {
