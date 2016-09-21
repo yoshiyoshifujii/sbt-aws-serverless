@@ -233,10 +233,15 @@ object AWSServerlessPlugin extends AutoPlugin {
             )
           } yield {
             val statusCode = response.getStatusLine.getStatusCode
-            if (Some(statusCode) == awsTestSuccessStatusCode.?.value)
+            if (Some(statusCode) == awsTestSuccessStatusCode.?.value) {
+              val out = System.out
+              response.getEntity.writeTo(out)
+              out.close()
               println("test method success.")
-            else
+            }
+            else {
               sys.error(s"test method failed. $statusCode")
+            }
           }).get
         case _ =>
           sys.error("Error testMethod. useage: testMethod <stageName>")
