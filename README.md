@@ -9,7 +9,7 @@ Add the following to your `project/plugins.sbt` file:
 ```sbt
 lazy val root = project.in(file(".")).dependsOn(githubRepo)
 
-lazy val githubRepo = uri("git://github.com/yoshiyoshifujii/sbt-aws-serverless.git#v1.3.0")
+lazy val githubRepo = uri("git://github.com/yoshiyoshifujii/sbt-aws-serverless.git#v1.3.1")
 ```
 
 Add the `AWSApiGatewayPlugin` auto-plugin to your build.sbt:
