@@ -107,9 +107,9 @@ trait AWSLambdaWrapper extends AWSWrapper {
     client.deleteFunction(request)
   }
 
-  def addPermission(functionName: FunctionName) = Try {
+  def addPermission(functionArn: FunctionArn) = Try {
     val request = new AddPermissionRequest()
-      .withFunctionName(functionName)
+      .withFunctionName(functionArn)
       .withStatementId("apigateway-invoke-lambda")
       .withAction("lambda:InvokeFunction")
       .withPrincipal("apigateway.amazonaws.com")
@@ -201,7 +201,8 @@ trait AWSLambdaWrapper extends AWSWrapper {
              jar: File,
              description: Option[Description],
              timeout: Option[Timeout],
-             memorySize: Option[MemorySize]) = {
+             memorySize: Option[MemorySize],
+             createAfter: FunctionArn => Try[Any] = arn => Try()) = {
     for {
       gfr <- get(functionName)
       arn <- gfr map { f =>
@@ -226,12 +227,57 @@ trait AWSLambdaWrapper extends AWSWrapper {
             description = description,
             timeout = timeout,
             memorySize = memorySize)
-          a <- addPermission(c.getFunctionArn)
+          _ <- createAfter(c.getFunctionArn)
         } yield c.getFunctionArn
       }
     } yield arn
   }
 
+  def listEventSourceMappings(functionArn: FunctionArn) = Try {
+    val request = new ListEventSourceMappingsRequest()
+      .withFunctionName(functionArn)
+
+    client.listEventSourceMappings(request)
+  }
+
+  def printEventSourceMappings(functionArn: FunctionArn) =
+    for {
+      l <- listEventSourceMappings(functionArn)
+    } yield {
+      val p = CliFormatter(
+        functionArn,
+        "Last modified" -> 30,
+        "State" -> 12,
+        "UUID" -> 40,
+        "Event Source Arn" -> 100
+      ).print4(
+        l.getEventSourceMappings.map { e =>
+          (e.getLastModified.toString, e.getState, e.getUUID, e.getEventSourceArn)
+        }: _*)
+      println(p)
+    }
+
+  def createEventSourceMapping(functionArn: FunctionArn,
+                               eventSourceArn: EventSourceArn) = Try {
+    val request = new CreateEventSourceMappingRequest()
+      .withFunctionName(functionArn)
+      .withEventSourceArn(eventSourceArn)
+      .withBatchSize(100)
+      .withStartingPosition(EventSourcePosition.TRIM_HORIZON)
+
+    client.createEventSourceMapping(request)
+  }
+
+  def deleteEventSourceMapping(uuid: String) = Try {
+    val request = new DeleteEventSourceMappingRequest()
+      .withUUID(uuid)
+
+    client.deleteEventSourceMapping(request)
+  }
+
+  def syncEventSourceMappings(functionName: FunctionName) = {
+
+  }
 }
 
 case class AWSLambda(regionName: String) extends AWSLambdaWrapper

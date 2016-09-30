@@ -35,9 +35,10 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
       val region = awsRegion.value
       val lambdaName = awsLambdaFunctionName.value
       val jar = sbtassembly.AssemblyKeys.assembly.value
+      val lambda = AWSLambda(region)
 
       lazy val deployLambda = {
-        AWSLambda(region).deploy(
+        lambda.deploy(
           functionName = lambdaName,
           role = awsLambdaRole.value,
           handler = awsLambdaHandler.value,
@@ -45,8 +46,8 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
           jar = sbtassembly.AssemblyKeys.assembly.value,
           description = awsLambdaDescription.?.value,
           timeout = awsLambdaTimeout.?.value,
-          memorySize = awsLambdaMemorySize.?.value
-        )
+          memorySize = awsLambdaMemorySize.?.value,
+          createAfter = arn => lambda.addPermission(arn))
       }
 
       (for {

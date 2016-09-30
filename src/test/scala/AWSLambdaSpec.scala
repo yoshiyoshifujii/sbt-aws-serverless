@@ -80,7 +80,9 @@ class AWSLambdaSpec extends FlatSpec with Matchers {
       jar = jar,
       description = Some("sample"),
       timeout = Some(15),
-      memorySize = Some(1024)) === jar
+      memorySize = Some(1024),
+      createAfter = arn => addPermission(arn)
+    ) === jar
 
     get(functionName) match {
       case Success(s) =>

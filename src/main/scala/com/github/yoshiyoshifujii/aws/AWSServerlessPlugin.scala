@@ -54,7 +54,8 @@ object AWSServerlessPlugin extends AutoPlugin {
   override lazy val projectSettings = Seq(
     deployLambda := {
       val region = awsRegion.value
-      AWSLambda(region).deploy(
+      val lambda = AWSLambda(region)
+      lambda.deploy(
         functionName = awsLambdaFunctionName.value,
         role = awsLambdaRole.value,
         handler = awsLambdaHandler.value,
@@ -62,8 +63,8 @@ object AWSServerlessPlugin extends AutoPlugin {
         jar = sbtassembly.AssemblyKeys.assembly.value,
         description = awsLambdaDescription.?.value,
         timeout = awsLambdaTimeout.?.value,
-        memorySize = awsLambdaMemorySize.?.value
-      ).get
+        memorySize = awsLambdaMemorySize.?.value,
+        createAfter = arn => lambda.addPermission(arn)).get
     },
     deploy := {
       val region = awsRegion.value
@@ -93,7 +94,7 @@ object AWSServerlessPlugin extends AutoPlugin {
               description = None
             )
             p <- lambda.addPermission(
-              functionName = a.getAliasArn
+              functionArn = a.getAliasArn
             )
           } yield a).get
         }
@@ -143,7 +144,7 @@ object AWSServerlessPlugin extends AutoPlugin {
                 description = None
               )
               p <- lambda.addPermission(
-                functionName = a.getAliasArn
+                functionArn = a.getAliasArn
               )
             } yield a.getAliasArn
           }
