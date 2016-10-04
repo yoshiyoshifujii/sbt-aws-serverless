@@ -71,6 +71,8 @@ object AWSServerlessPlugin extends AutoPlugin {
       val lambdaName = awsLambdaFunctionName.value
       val jar = sbtassembly.AssemblyKeys.assembly.value
       val restApiId = awsApiGatewayRestApiId.value
+      val description = awsLambdaDeployDescription.?.value
+
       val lambda = AWSLambda(region)
       val method = AWSApiGatewayMethods(
         regionName = region,
@@ -81,7 +83,7 @@ object AWSServerlessPlugin extends AutoPlugin {
 
       lazy val publish = lambda.publishVersion(
         functionName = awsLambdaFunctionName.value,
-        description = awsLambdaDeployDescription.?.value
+        description = description
       )
 
       lazy val createAliases = (v: String) => Try {
@@ -91,7 +93,7 @@ object AWSServerlessPlugin extends AutoPlugin {
               functionName = lambdaName,
               name = s"$name$v",
               functionVersion = Some(v),
-              description = None
+              description = description
             )
             p <- lambda.addPermission(
               functionArn = a.getAliasArn

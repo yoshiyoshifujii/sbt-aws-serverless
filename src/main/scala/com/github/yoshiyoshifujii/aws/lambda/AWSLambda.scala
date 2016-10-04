@@ -30,6 +30,16 @@ trait AWSLambdaWrapper extends AWSWrapper {
       case e: ResourceNotFoundException => None
     }
 
+  lazy val generateLambdaArn =
+    (awsAccount: String) =>
+      (lambdaName: String) =>
+        (lambdaAlias: Option[String]) =>
+          lambdaAlias map { alias =>
+            s"arn:aws:lambda:$regionName:$awsAccount:function:$lambdaName:$alias"
+          } getOrElse {
+            s"arn:aws:lambda:$regionName:$awsAccount:function:$lambdaName"
+          }
+
   def create(functionName: FunctionName,
              role: Role,
              handler: Handler,
@@ -275,9 +285,11 @@ trait AWSLambdaWrapper extends AWSWrapper {
     client.deleteEventSourceMapping(request)
   }
 
-  def syncEventSourceMappings(functionName: FunctionName) = {
-
-  }
+  def deleteEventSourceMappings(functionArn: FunctionArn) =
+    for {
+      l <- listEventSourceMappings(functionArn)
+      d <- Try(l.getEventSourceMappings.map(e => deleteEventSourceMapping(e.getUUID).get))
+    } yield d
 }
 
 case class AWSLambda(regionName: String) extends AWSLambdaWrapper
