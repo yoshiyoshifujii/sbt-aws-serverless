@@ -13,14 +13,21 @@ object AWSApiGatewayPlugin extends AutoPlugin {
     lazy val createApiGateway = inputKey[Unit]("")
     lazy val deleteApiGateway = inputKey[Unit]("")
     lazy val putApiGateway = taskKey[Unit]("")
-    lazy val deployStages = taskKey[Unit]("")
+
     lazy val createDeployment = inputKey[Unit]("")
-    lazy val updateStages = inputKey[Unit]("")
+
+    lazy val deployStages = inputKey[Unit]("")
     lazy val getStages = taskKey[Unit]("")
-    lazy val getDeployments = taskKey[Unit]("")
-    lazy val getResources = taskKey[Unit]("")
     lazy val deleteStages = taskKey[Unit]("")
+    lazy val deleteStage = inputKey[Unit]("")
+
+    lazy val getDeployments = taskKey[Unit]("")
     lazy val deleteDeployments = taskKey[Unit]("")
+    lazy val deleteDeployment = inputKey[Unit]("")
+
+    lazy val getResources = taskKey[Unit]("")
+    lazy val deleteResources = taskKey[Unit]("")
+    lazy val deleteResource = inputKey[Unit]("")
 
     lazy val awsRegion = settingKey[String]("")
     lazy val awsAccountId = settingKey[String]("")
@@ -68,39 +75,6 @@ object AWSApiGatewayPlugin extends AutoPlugin {
         mode = PutMode.Merge,
         failOnWarnings = None).get
     },
-    deployStages := {
-      val restApiId = awsApiGatewayRestApiId.value
-      val variables = awsApiGatewayStageVariables.?.value
-      val api = AWSApiGatewayRestApi(awsRegion.value)
-      val stages = awsApiGatewayStages.value
-
-      lazy val createDeployment = (sn: String, sd: Option[String]) =>
-        api.createDeployment(
-          restApiId = restApiId,
-          stageName = sn,
-          stageDescription = sd,
-          description = Some(version.value),
-          variables = variables.flatMap(m => m.get(sn))
-        ).get.getId
-
-      lazy val createOrUpdateStage = (deploymentId: String) => (sn: String, sd: Option[String]) =>
-        api.createOrUpdateStage(
-          restApiId = restApiId,
-          stageName = sn,
-          deploymentId = deploymentId,
-          description = sd,
-          variables = variables.flatMap(m => m.get(sn))
-        ).get
-
-      stages.headOption match {
-        case Some((stageName, stageDescription)) =>
-          val deploymentId = createDeployment(stageName, stageDescription)
-          stages.tail.foreach { case (sn, sd) =>
-            createOrUpdateStage(deploymentId)(sn, sd)
-          }
-        case None =>
-      }
-    },
     createDeployment := {
       val restApiId = awsApiGatewayRestApiId.value
       val variables = awsApiGatewayStageVariables.?.value
@@ -126,22 +100,29 @@ object AWSApiGatewayPlugin extends AutoPlugin {
           sys.error("Error createDeployment. useage: createDeployment <stageName> [stageDescription]")
       }
     },
-    updateStages := {
+    deployStages := {
       val restApiId = awsApiGatewayRestApiId.value
+      val variables = awsApiGatewayStageVariables.?.value
       val api = AWSApiGatewayRestApi(awsRegion.value)
       val stages = awsApiGatewayStages.value
+
+      lazy val createOrUpdateStage = (deploymentId: String) => (sn: String, sd: Option[String]) =>
+        api.createOrUpdateStage(
+          restApiId = restApiId,
+          stageName = sn,
+          deploymentId = deploymentId,
+          description = sd,
+          variables = variables.flatMap(m => m.get(sn))
+        ).get
 
       spaceDelimited("<arg>").parsed match {
         case Seq(deploymentId) =>
           stages.foreach {
             case (sn, sd) =>
-              api.updateStage(
-                restApiId = restApiId,
-                stageName = sn,
-                deploymentId = deploymentId).get
+              createOrUpdateStage(deploymentId)(sn, sd)
           }
         case _ =>
-          sys.error("Error updateStages. useage: updateStages <deploymentId>")
+          sys.error("Error deployStages. useage: deployStages <deploymentId>")
       }
     },
     getStages := {
@@ -149,14 +130,24 @@ object AWSApiGatewayPlugin extends AutoPlugin {
         .printStages(awsApiGatewayRestApiId.value)
         .get
     },
+    deleteStages := ? {
+      AWSApiGatewayRestApi(awsRegion.value)
+        .deleteStages(awsApiGatewayRestApiId.value)
+        .get
+    },
+    deleteStage := ? {
+      spaceDelimited("<arg>").parsed match {
+        case Seq(stageName) =>
+          AWSApiGatewayRestApi(awsRegion.value)
+            .deleteStage(awsApiGatewayRestApiId.value, stageName)
+            .get
+        case _ =>
+          sys.error("Error deleteStage. useage: deleteStage <stageName>")
+      }
+    },
     getDeployments := {
       AWSApiGatewayRestApi(awsRegion.value)
         .printDeployments(awsApiGatewayRestApiId.value)
-        .get
-    },
-    getResources := {
-      AWSApiGatewayRestApi(awsRegion.value)
-        .printResources(awsApiGatewayRestApiId.value)
         .get
     },
     deleteDeployments := ? {
@@ -164,10 +155,35 @@ object AWSApiGatewayPlugin extends AutoPlugin {
         .deleteDeployments(awsApiGatewayRestApiId.value)
         .get
     },
-    deleteStages := ? {
+    deleteDeployment := ? {
+      spaceDelimited("<arg>").parsed match {
+        case Seq(deploymentId) =>
+          AWSApiGatewayRestApi(awsRegion.value)
+            .deleteDeployment(awsApiGatewayRestApiId.value, deploymentId)
+            .get
+        case _ =>
+          sys.error("Error deleteDeployment. useage: deleteDeployment <deploymentId>")
+      }
+    },
+    getResources := {
       AWSApiGatewayRestApi(awsRegion.value)
-        .deleteStages(awsApiGatewayRestApiId.value)
+        .printResources(awsApiGatewayRestApiId.value)
         .get
+    },
+    deleteResources := ? {
+      AWSApiGatewayRestApi(awsRegion.value)
+        .deleteResources(awsApiGatewayRestApiId.value)
+        .get
+    },
+    deleteResource := ? {
+      spaceDelimited("<arg>").parsed match {
+        case Seq(resourceId) =>
+          AWSApiGatewayRestApi(awsRegion.value)
+            .deleteResource(awsApiGatewayRestApiId.value, resourceId)
+            .get
+        case _ =>
+          sys.error("Error deleteResource. useage: deleteResource <resourceId>")
+      }
     }
   )
 }
