@@ -1,13 +1,12 @@
 package com.github.yoshiyoshifujii.aws.apigateway
 
 import com.amazonaws.services.apigateway.model._
-import com.github.yoshiyoshifujii.cliformatter.CliFormatter
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.util.Try
 
-trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayWrapper {
+trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayRestApiWrapper {
   val restApiId: RestApiId
 
   def createAuthorizer(name: String,
@@ -28,32 +27,9 @@ trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayWrapper {
     client.createAuthorizer(request)
   }
 
-  def getAuthorizers = Try {
-    val request = new GetAuthorizersRequest()
-      .withRestApiId(restApiId)
-
-    client.getAuthorizers(request)
-  }
-
-  def printAuthorizers =
-    for {
-      l <- getAuthorizers
-    } yield {
-      val p = CliFormatter(
-        s"Rest API Authorizers: $restApiId",
-        "ID" -> 15,
-        "Name" -> 40,
-        "URI" -> 150
-      ).print3(
-        l.getItems map { d =>
-          (d.getId, d.getName, d.getAuthorizerUri)
-        }: _*)
-      println(p)
-    }
-
   def getAuthorizer(name: String) =
     for {
-      as <- getAuthorizers
+      as <- getAuthorizers(restApiId)
     } yield as.getItems.find(a => a.getName == name)
 
   def updateAuthorizer(authorizerId: AuthorizerId,

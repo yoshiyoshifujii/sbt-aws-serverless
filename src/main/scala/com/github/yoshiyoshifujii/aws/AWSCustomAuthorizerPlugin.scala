@@ -1,6 +1,6 @@
 package com.github.yoshiyoshifujii.aws
 
-import com.github.yoshiyoshifujii.aws.apigateway.{AWSApiGatewayAuthorize, Uri}
+import com.github.yoshiyoshifujii.aws.apigateway.{AWSApiGatewayAuthorize, AWSApiGatewayRestApi}
 import com.github.yoshiyoshifujii.aws.lambda.AWSLambda
 import sbt._
 
@@ -9,7 +9,6 @@ import scala.util.Try
 object AWSCustomAuthorizerPlugin extends AutoPlugin {
 
   object autoImport {
-    lazy val getAuthorizers = taskKey[Unit]("")
     lazy val deployAuthorizer = taskKey[String]("")
     lazy val deleteAuthorizer = taskKey[Unit]("")
 
@@ -26,10 +25,7 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
   override lazy val projectSettings = Seq(
     getAuthorizers := {
       val region = awsRegion.value
-      AWSApiGatewayAuthorize(
-        regionName = region,
-        restApiId = awsApiGatewayRestApiId.value
-      ).printAuthorizers
+      AWSApiGatewayRestApi(region).printAuthorizers(awsApiGatewayRestApiId.value)
     },
     deploy := {
       val region = awsRegion.value

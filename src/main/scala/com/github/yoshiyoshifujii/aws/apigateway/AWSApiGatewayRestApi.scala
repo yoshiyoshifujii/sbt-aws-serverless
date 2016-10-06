@@ -46,13 +46,13 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
     } yield {
       val p = CliFormatter(
         "Rest APIs",
+        "Rest API Name" -> 30,
         "Created Date" -> 30,
         "Rest API Id" -> 15,
-        "Rest API Name" -> 30,
         "Description" -> 30
       ).print4(
-        l.getItems map { d =>
-          (d.getCreatedDate.toString, d.getId, d.getName, d.getDescription)
+        l.getItems.sortBy(d => d.getName) map { d =>
+          (d.getName, d.getCreatedDate.toString, d.getId, d.getDescription)
         }: _*)
       println(p)
     }
@@ -282,6 +282,29 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
       _ <- Try(l.getItems.foreach(r => deleteResource(restApiId, r.getId).get))
     } yield l
   }
+
+  def getAuthorizers(restApiId: RestApiId) = Try {
+    val request = new GetAuthorizersRequest()
+      .withRestApiId(restApiId)
+
+    client.getAuthorizers(request)
+  }
+
+  def printAuthorizers(restApiId: RestApiId) =
+    for {
+      l <- getAuthorizers(restApiId)
+    } yield {
+      val p = CliFormatter(
+        s"Rest API Authorizers: $restApiId",
+        "ID" -> 15,
+        "Name" -> 40,
+        "URI" -> 150
+      ).print3(
+        l.getItems map { d =>
+          (d.getId, d.getName, d.getAuthorizerUri)
+        }: _*)
+      println(p)
+    }
 
 }
 case class AWSApiGatewayRestApi(regionName: String) extends AWSApiGatewayRestApiWrapper

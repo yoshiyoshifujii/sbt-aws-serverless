@@ -29,6 +29,8 @@ object AWSApiGatewayPlugin extends AutoPlugin {
     lazy val deleteResources = taskKey[Unit]("")
     lazy val deleteResource = inputKey[Unit]("")
 
+    lazy val getAuthorizers = taskKey[Unit]("")
+
     lazy val awsRegion = settingKey[String]("")
     lazy val awsAccountId = settingKey[String]("")
 
@@ -184,6 +186,11 @@ object AWSApiGatewayPlugin extends AutoPlugin {
         case _ =>
           sys.error("Error deleteResource. useage: deleteResource <resourceId>")
       }
+    },
+    getAuthorizers := {
+      AWSApiGatewayRestApi(awsRegion.value)
+        .printAuthorizers(awsApiGatewayRestApiId.value)
+        .get
     }
   )
 }
