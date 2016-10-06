@@ -211,7 +211,7 @@ object AWSServerlessPlugin extends AutoPlugin {
       val region = awsRegion.value
       val restApiId = awsApiGatewayRestApiId.value
       val path = awsApiGatewayResourcePath.value
-      spaceDelimited("<arg>").parsed match {
+      spaceDelimited("<stageName>").parsed match {
         case Seq(stageName) =>
           import com.github.yoshiyoshifujii.aws.http._
           val url = generateUrl(

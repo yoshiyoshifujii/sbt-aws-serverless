@@ -18,6 +18,7 @@ object AWSApiGatewayPlugin extends AutoPlugin {
 
     lazy val deployStages = inputKey[Unit]("")
     lazy val getStages = taskKey[Unit]("")
+    lazy val updateStage = inputKey[Unit]("")
     lazy val deleteStages = taskKey[Unit]("")
     lazy val deleteStage = inputKey[Unit]("")
 
@@ -49,7 +50,7 @@ object AWSApiGatewayPlugin extends AutoPlugin {
     },
     createApiGateway := {
       val api = AWSApiGatewayRestApi(awsRegion.value)
-      val res = spaceDelimited("<arg>").parsed match {
+      val res = spaceDelimited("<name> [description]").parsed match {
         case Seq(restApiName) =>
           api.create(restApiName, None).get
         case Seq(restApiName, restApiDescription) =>
@@ -61,7 +62,7 @@ object AWSApiGatewayPlugin extends AutoPlugin {
     },
     deleteApiGateway := ? {
       val api = AWSApiGatewayRestApi(awsRegion.value)
-      spaceDelimited("<arg>").parsed match {
+      spaceDelimited("<restApiId>").parsed match {
         case Seq(restApiId) =>
           api.delete(restApiId).get
           println(s"ApiGateway deleted: $restApiId")
@@ -81,7 +82,7 @@ object AWSApiGatewayPlugin extends AutoPlugin {
       val restApiId = awsApiGatewayRestApiId.value
       val variables = awsApiGatewayStageVariables.?.value
       val api = AWSApiGatewayRestApi(awsRegion.value)
-      spaceDelimited("<arg>").parsed match {
+      spaceDelimited("<stageName> [stageDescription]").parsed match {
         case Seq(stageName, stageDescription) =>
           api.createDeployment(
             restApiId = restApiId,
@@ -117,7 +118,7 @@ object AWSApiGatewayPlugin extends AutoPlugin {
           variables = variables.flatMap(m => m.get(sn))
         ).get
 
-      spaceDelimited("<arg>").parsed match {
+      spaceDelimited("<deploymentId>").parsed match {
         case Seq(deploymentId) =>
           stages.foreach {
             case (sn, sd) =>
@@ -132,13 +133,23 @@ object AWSApiGatewayPlugin extends AutoPlugin {
         .printStages(awsApiGatewayRestApiId.value)
         .get
     },
+    updateStage := {
+      spaceDelimited("<stageName> <deploymentId>").parsed match {
+        case Seq(stageName, deploymentId) =>
+          AWSApiGatewayRestApi(awsRegion.value)
+            .updateStage(awsApiGatewayRestApiId.value, stageName, deploymentId)
+            .get
+        case _ =>
+          sys.error("Error updateStage. useage: updateStage <stageName> <deploymentId>")
+      }
+    },
     deleteStages := ? {
       AWSApiGatewayRestApi(awsRegion.value)
         .deleteStages(awsApiGatewayRestApiId.value)
         .get
     },
     deleteStage := ? {
-      spaceDelimited("<arg>").parsed match {
+      spaceDelimited("<stageName>").parsed match {
         case Seq(stageName) =>
           AWSApiGatewayRestApi(awsRegion.value)
             .deleteStage(awsApiGatewayRestApiId.value, stageName)
@@ -158,7 +169,7 @@ object AWSApiGatewayPlugin extends AutoPlugin {
         .get
     },
     deleteDeployment := ? {
-      spaceDelimited("<arg>").parsed match {
+      spaceDelimited("<deploymentId>").parsed match {
         case Seq(deploymentId) =>
           AWSApiGatewayRestApi(awsRegion.value)
             .deleteDeployment(awsApiGatewayRestApiId.value, deploymentId)
@@ -178,7 +189,7 @@ object AWSApiGatewayPlugin extends AutoPlugin {
         .get
     },
     deleteResource := ? {
-      spaceDelimited("<arg>").parsed match {
+      spaceDelimited("<resourceId>").parsed match {
         case Seq(resourceId) =>
           AWSApiGatewayRestApi(awsRegion.value)
             .deleteResource(awsApiGatewayRestApiId.value, resourceId)
