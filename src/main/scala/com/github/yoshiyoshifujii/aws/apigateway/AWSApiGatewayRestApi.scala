@@ -279,7 +279,13 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
   def deleteResources(restApiId: RestApiId) = {
     for {
       l <- getResources(restApiId)
-      _ <- Try(l.getItems.foreach(r => deleteResource(restApiId, r.getId).get))
+      _ <- Try(l.getItems.filter(r => r.getPath != "/").foreach{ r =>
+        try {
+          deleteResource(restApiId, r.getId).get
+        } catch {
+          case e: com.amazonaws.services.apigateway.model.NotFoundException =>
+        }
+      })
     } yield l
   }
 
