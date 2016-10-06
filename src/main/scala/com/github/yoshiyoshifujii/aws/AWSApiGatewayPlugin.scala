@@ -65,7 +65,7 @@ object AWSApiGatewayPlugin extends AutoPlugin {
       api.put(
         restApiId = awsApiGatewayRestApiId.value,
         body = awsApiGatewayYAMLFile.value,
-        mode = PutMode.Overwrite,
+        mode = PutMode.Merge,
         failOnWarnings = None).get
     },
     deployStages := {
