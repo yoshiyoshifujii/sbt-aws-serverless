@@ -108,10 +108,13 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     client.updateMethod(request)
   }
 
-  def deploy(uri: Uri,
+  def deploy(awsAccountId: String,
+             lambdaName: String,
+             lambdaAlias: Option[String],
              requestTemplates: RequestTemplates,
              responseTemplates: ResponseTemplates,
              withAuth: ResourceId => Try[Unit] = resourceId => Try()): Try[Option[Resource]] = {
+    val uri = Uri(regionName, awsAccountId, lambdaName, lambdaAlias)
     for {
       resource <- getResource
       resourceOpt <- Try {

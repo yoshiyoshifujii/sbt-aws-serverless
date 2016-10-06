@@ -121,7 +121,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
         "Deployment Id" -> 15,
         "Description" -> 30
       ).print3(
-        l.getItems map { d =>
+        l.getItems.sortBy(d => d.getCreatedDate.getTime).reverse map { d =>
           (d.getCreatedDate.toString, d.getId, d.getDescription)
         }: _*)
       println(p)

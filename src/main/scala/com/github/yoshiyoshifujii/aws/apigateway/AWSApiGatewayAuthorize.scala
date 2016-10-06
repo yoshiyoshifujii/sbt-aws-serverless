@@ -88,10 +88,18 @@ trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayWrapper {
   }
 
   def deployAuthorizer(name: String,
-                       authorizerUri: Uri,
+                       awsAccountId: String,
+                       lambdaName: String,
+                       lambdaAlias: Option[String],
                        identitySourceHeaderName: String,
                        identityValidationExpression: Option[String],
                        authorizerResultTtlInSeconds: Option[Int] = Some(300)) = {
+    val authorizerUri = Uri(
+      regionName = regionName,
+      awsAccountId = awsAccountId,
+      lambdaName = lambdaName,
+      lambdaAlias = lambdaAlias
+    )
     for {
       aOp <- getAuthorizer(name)
       id <- Try {

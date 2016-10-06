@@ -64,12 +64,9 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
           restApiId = awsApiGatewayRestApiId.value
         ).deployAuthorizer(
           name = awsAuthorizerName.value,
-          authorizerUri = Uri(
-            region,
-            awsAccountId.value,
-            awsLambdaFunctionName.value,
-            None
-          ),
+          awsAccountId = awsAccountId.value,
+          lambdaName = awsLambdaFunctionName.value,
+          lambdaAlias = None,
           identitySourceHeaderName = awsIdentitySourceHeaderName.value,
           identityValidationExpression = awsIdentityValidationExpression.?.value,
           authorizerResultTtlInSeconds = awsAuthorizerResultTtlInSeconds.?.value
