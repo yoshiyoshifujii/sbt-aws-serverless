@@ -7,9 +7,7 @@ sbt plugin to deploy code to Amazon API Gateway and AWS Lambda
 Add the following to your `project/plugins.sbt` file:
 
 ```sbt
-lazy val root = project.in(file(".")).dependsOn(githubRepo)
-
-lazy val githubRepo = uri("git://github.com/yoshiyoshifujii/sbt-aws-serverless.git#v1.3.1")
+addSbtPlugin("com.github.yoshiyoshifujii" % "sbt-aws-serverless" % "1.5.0")
 ```
 
 Add the `AWSApiGatewayPlugin` auto-plugin to your build.sbt:
@@ -38,7 +36,9 @@ enablePlugins(AWSCustomAuthorizerPlugin)
 
 `sbt deploy` deploy AWS Lambda function from the current project.
 
-`sbt deployStages` deploy the Amazon API Gateway Stages.
+`sbt "createDeployment test"` deploy the Amazon API Gateway Stages.
+
+`sbt "testMethod test"` test to deploy stage.
 
 ## Configuration
 
