@@ -1,6 +1,6 @@
 package com.github.yoshiyoshifujii.aws
 
-import com.github.yoshiyoshifujii.aws.apigateway.{AWSApiGatewayAuthorize, Uri}
+import com.github.yoshiyoshifujii.aws.apigateway.{AWSApiGatewayAuthorize, AWSApiGatewayRestApi}
 import com.github.yoshiyoshifujii.aws.lambda.AWSLambda
 import sbt._
 
@@ -9,7 +9,6 @@ import scala.util.Try
 object AWSCustomAuthorizerPlugin extends AutoPlugin {
 
   object autoImport {
-    lazy val getAuthorizers = taskKey[Unit]("")
     lazy val deployAuthorizer = taskKey[String]("")
     lazy val deleteAuthorizer = taskKey[Unit]("")
 
@@ -26,10 +25,7 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
   override lazy val projectSettings = Seq(
     getAuthorizers := {
       val region = awsRegion.value
-      AWSApiGatewayAuthorize(
-        regionName = region,
-        restApiId = awsApiGatewayRestApiId.value
-      ).printAuthorizers
+      AWSApiGatewayRestApi(region).printAuthorizers(awsApiGatewayRestApiId.value)
     },
     deploy := {
       val region = awsRegion.value
@@ -65,12 +61,9 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
           restApiId = awsApiGatewayRestApiId.value
         ).deployAuthorizer(
           name = awsAuthorizerName.value,
-          authorizerUri = Uri(
-            region,
-            awsAccountId.value,
-            awsLambdaFunctionName.value,
-            None
-          ),
+          awsAccountId = awsAccountId.value,
+          lambdaName = awsLambdaFunctionName.value,
+          lambdaAlias = None,
           identitySourceHeaderName = awsIdentitySourceHeaderName.value,
           identityValidationExpression = awsIdentityValidationExpression.?.value,
           authorizerResultTtlInSeconds = awsAuthorizerResultTtlInSeconds.?.value

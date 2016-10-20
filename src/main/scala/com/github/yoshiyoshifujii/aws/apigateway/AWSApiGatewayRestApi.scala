@@ -46,13 +46,13 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
     } yield {
       val p = CliFormatter(
         "Rest APIs",
+        "Rest API Name" -> 30,
         "Created Date" -> 30,
         "Rest API Id" -> 15,
-        "Rest API Name" -> 30,
         "Description" -> 30
       ).print4(
-        l.getItems map { d =>
-          (d.getCreatedDate.toString, d.getId, d.getName, d.getDescription)
+        l.getItems.sortBy(d => d.getName) map { d =>
+          (d.getName, d.getCreatedDate.toString, d.getId, d.getDescription)
         }: _*)
       println(p)
     }
@@ -121,7 +121,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
         "Deployment Id" -> 15,
         "Description" -> 30
       ).print3(
-        l.getItems map { d =>
+        l.getItems.sortBy(d => d.getCreatedDate.getTime).reverse map { d =>
           (d.getCreatedDate.toString, d.getId, d.getDescription)
         }: _*)
       println(p)
@@ -131,7 +131,8 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
   def deleteDeployments(restApiId: RestApiId) =
     for {
       l <- getDeployments(restApiId)
-    } yield l.getItems foreach(i => deleteDeployment(restApiId, i.getId))
+      _ <- Try(l.getItems foreach(i => deleteDeployment(restApiId, i.getId).get))
+    } yield l
 
   def createStage(restApiId: RestApiId,
                   stageName: StageName,
@@ -221,12 +222,12 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
     } yield {
       val p = CliFormatter(
         restApiId,
-        "Stage Name" -> 10,
+        "Stage Name" -> 20,
         "Last Updated Date" -> 30,
         "Deployment Id" -> 15,
         "Description" -> 30
       ).print4(
-        l.getItem map { s =>
+        l.getItem. map { s =>
           (s.getStageName, s.getLastUpdatedDate.toString, s.getDeploymentId, s.getDescription)
         }: _*)
       println(p)
@@ -236,7 +237,8 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
   def deleteStages(restApiId: RestApiId) =
     for {
       l <- getStages(restApiId)
-    } yield l.getItem.foreach(i => deleteStage(restApiId, i.getStageName))
+      _ <- Try(l.getItem.foreach(i => deleteStage(restApiId, i.getStageName).get))
+    } yield l
 
   def getResources(restApiId: RestApiId) = Try {
     val request = new GetResourcesRequest()
@@ -258,12 +260,57 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
         "Resource Path" -> 50,
         "Method Keys" -> 30
       ).print3(
-        l.getItems map { r =>
+        l.getItems.sortBy(r => r.getPath) map { r =>
           (r.getId, r.getPath, getResourceMethodKeys(r))
         }: _*)
       println(p)
     }
   }
+
+  def deleteResource(restApiId: RestApiId,
+                     resourceId: ResourceId) = Try {
+    val request = new DeleteResourceRequest()
+      .withRestApiId(restApiId)
+      .withResourceId(resourceId)
+
+    client.deleteResource(request)
+  }
+
+  def deleteResources(restApiId: RestApiId) = {
+    for {
+      l <- getResources(restApiId)
+      _ <- Try(l.getItems.filter(r => r.getPath != "/").foreach{ r =>
+        try {
+          deleteResource(restApiId, r.getId).get
+        } catch {
+          case e: com.amazonaws.services.apigateway.model.NotFoundException =>
+        }
+      })
+    } yield l
+  }
+
+  def getAuthorizers(restApiId: RestApiId) = Try {
+    val request = new GetAuthorizersRequest()
+      .withRestApiId(restApiId)
+
+    client.getAuthorizers(request)
+  }
+
+  def printAuthorizers(restApiId: RestApiId) =
+    for {
+      l <- getAuthorizers(restApiId)
+    } yield {
+      val p = CliFormatter(
+        s"Rest API Authorizers: $restApiId",
+        "ID" -> 15,
+        "Name" -> 40,
+        "URI" -> 150
+      ).print3(
+        l.getItems map { d =>
+          (d.getId, d.getName, d.getAuthorizerUri)
+        }: _*)
+      println(p)
+    }
 
 }
 case class AWSApiGatewayRestApi(regionName: String) extends AWSApiGatewayRestApiWrapper

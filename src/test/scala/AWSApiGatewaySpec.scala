@@ -96,7 +96,9 @@ class AWSApiGatewaySpec extends FlatSpec with BeforeAndAfterAll with Matchers {
     val uri = Uri(regionName, AwsAccountId, lambdaName, Some("${stageVariables.env}"))
 
     deploy(
-      uri = uri,
+      AwsAccountId,
+      lambdaName,
+      Some("${stageVariables.env}"),
       requestTemplates = RequestTemplates("application/json" ->
         """{"stage":{"env":"$stageVariables.env","region":"$stageVariables.region"},"company_id":"$input.params('company-id')","body":$input.json('$')}"""),
       responseTemplates = ResponseTemplates(

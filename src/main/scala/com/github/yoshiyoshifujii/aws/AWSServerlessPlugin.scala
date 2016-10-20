@@ -104,12 +104,9 @@ object AWSServerlessPlugin extends AutoPlugin {
 
       lazy val deployResource = (v: String) =>
         method.deploy(
-          uri = Uri(
-            region,
-            awsAccountId.value,
-            lambdaName,
-            awsApiGatewayResourceUriLambdaAlias.?.value.map(a => s"$a$v")
-          ),
+          awsAccountId = awsAccountId.value,
+          lambdaName = lambdaName,
+          lambdaAlias = awsApiGatewayResourceUriLambdaAlias.?.value.map(a => s"$a$v"),
           requestTemplates = RequestTemplates(awsApiGatewayIntegrationRequestTemplates.value: _*),
           responseTemplates = awsApiGatewayIntegrationResponseTemplates.value,
           withAuth(method)(AWSApiGatewayAuthorize(region, restApiId))(awsMethodAuthorizerName.?.value)
@@ -174,12 +171,9 @@ object AWSServerlessPlugin extends AutoPlugin {
       )
 
       method.deploy(
-        uri = Uri(
-          region,
-          awsAccountId.value,
-          lambdaName,
-          awsApiGatewayResourceUriLambdaAlias.?.value
-        ),
+        awsAccountId = awsAccountId.value,
+        lambdaName = lambdaName,
+        lambdaAlias = awsApiGatewayResourceUriLambdaAlias.?.value,
         requestTemplates = RequestTemplates(awsApiGatewayIntegrationRequestTemplates.value: _*),
         responseTemplates = awsApiGatewayIntegrationResponseTemplates.value,
         withAuth(method)(AWSApiGatewayAuthorize(region, restApiId))(awsMethodAuthorizerName.?.value)
@@ -220,7 +214,7 @@ object AWSServerlessPlugin extends AutoPlugin {
       val region = awsRegion.value
       val restApiId = awsApiGatewayRestApiId.value
       val path = awsApiGatewayResourcePath.value
-      spaceDelimited("<arg>").parsed match {
+      spaceDelimited("<stageName>").parsed match {
         case Seq(stageName) =>
           import com.github.yoshiyoshifujii.aws.http._
           val url = generateUrl(
