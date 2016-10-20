@@ -4,9 +4,10 @@ object Dependencies {
 
   val awsSdkVersion = "1.11.29"
 
-  val awsJavaSdkLambda      = "com.amazonaws" % "aws-java-sdk-lambda" % awsSdkVersion
-  val awsJavaSdkApiGateway  = "com.amazonaws" % "aws-java-sdk-api-gateway" % awsSdkVersion
-  val awsJavaSdkS3          = "com.amazonaws" % "aws-java-sdk-s3"     % awsSdkVersion
+  val awsJavaSdkLambda      = "com.amazonaws" % "aws-java-sdk-lambda"       % awsSdkVersion
+  val awsJavaSdkApiGateway  = "com.amazonaws" % "aws-java-sdk-api-gateway"  % awsSdkVersion
+  val awsJavaSdkS3          = "com.amazonaws" % "aws-java-sdk-s3"           % awsSdkVersion
+  val awsJavaSdkKinesis     = "com.amazonaws" % "aws-java-sdk-kinesis"      % awsSdkVersion
 
   val scalaTest = "org.scalatest" %% "scalatest" % "2.2.4"
 
@@ -20,6 +21,7 @@ object Dependencies {
     awsJavaSdkLambda,
     awsJavaSdkApiGateway,
     awsJavaSdkS3,
+    awsJavaSdkKinesis,
     config % Test,
     scalaTest % Test
   )

@@ -1,5 +1,6 @@
 package com.github.yoshiyoshifujii.aws
 
+import com.github.yoshiyoshifujii.aws.kinesis.AWSKinesis
 import com.github.yoshiyoshifujii.aws.lambda.AWSLambda
 import sbt._
 
@@ -11,6 +12,7 @@ object AWSLambdaTriggerKinesisStreamPlugin extends AutoPlugin {
     lazy val listEventSourceMappings = inputKey[Unit]("")
     lazy val syncEventSourceMappings = inputKey[Unit]("")
     lazy val deleteEventSourceMappings = inputKey[Unit]("")
+    lazy val describeStreams = inputKey[Unit]("")
 
     lazy val eventSourceNames = settingKey[Seq[String]]("")
   }
@@ -90,7 +92,7 @@ object AWSLambdaTriggerKinesisStreamPlugin extends AutoPlugin {
 
       val lambda = AWSLambda(region)
 
-      val arn = spaceDelimited("<arg>").parsed match {
+      val arn = spaceDelimited("[stageName]").parsed match {
         case Seq(stageName) =>
           lambda.generateLambdaArn(awsAccountId.value)(functionName)(Some(stageName))
         case _ =>
@@ -107,7 +109,7 @@ object AWSLambdaTriggerKinesisStreamPlugin extends AutoPlugin {
 
       val lambda = AWSLambda(region)
 
-      val (functionArn, generateEventSourceName) = spaceDelimited("<arg>").parsed match {
+      val (functionArn, generateEventSourceName) = spaceDelimited("[stageName]").parsed match {
         case Seq(stageName) =>
           (lambda.generateLambdaArn(awsAccountId.value)(functionName)(Some(stageName)),
             (eventSourceName: String) => s"$eventSourceName-$stageName")
@@ -135,7 +137,7 @@ object AWSLambdaTriggerKinesisStreamPlugin extends AutoPlugin {
 
       val lambda = AWSLambda(region)
 
-      val functionArn = spaceDelimited("<arg>").parsed match {
+      val functionArn = spaceDelimited("[stageName]").parsed match {
         case Seq(stageName) =>
           lambda.generateLambdaArn(awsAccountId.value)(functionName)(Some(stageName))
         case _ =>
@@ -149,6 +151,24 @@ object AWSLambdaTriggerKinesisStreamPlugin extends AutoPlugin {
       for {
         l <- AWSLambda(region).delete(awsLambdaFunctionName.value)
       } yield l
+    },
+    describeStreams := {
+      import complete.DefaultParsers._
+
+      val region = awsRegion.value
+
+      val kinesis = AWSKinesis(region)
+
+      val generateStreamName = spaceDelimited("[stageName]").parsed match {
+        case Seq(stageName) =>
+          (name: String) => s"$name-$stageName"
+        case _ =>
+          (name: String) => name
+      }
+
+      eventSourceNames.value.foreach { name =>
+        kinesis.printDescribeStream(generateStreamName(name))
+      }
     }
   )
 
