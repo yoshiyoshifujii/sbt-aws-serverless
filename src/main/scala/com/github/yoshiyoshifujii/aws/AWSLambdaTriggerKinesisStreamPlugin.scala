@@ -38,6 +38,40 @@ object AWSLambdaTriggerKinesisStreamPlugin extends AutoPlugin {
         timeout = awsLambdaTimeout.?.value,
         memorySize = awsLambdaMemorySize.?.value).get
     },
+    deployDev := {
+      val region = awsRegion.value
+      val lambdaName = awsLambdaFunctionName.value
+      val jar = sbtassembly.AssemblyKeys.assembly.value
+      val lambda = AWSLambda(region)
+
+      lazy val createAliasIfNotExists = Try {
+        (for {
+          aOp <- lambda.getAlias(lambdaName, "dev")
+          res <- aOp map { a =>
+            Try(a.getAliasArn)
+          } getOrElse {
+            for {
+              a <- lambda.createAlias(
+                functionName = lambdaName,
+                name = s"dev",
+                functionVersion = Some("$LATEST"),
+                description = None
+              )
+              p <- lambda.addPermission(
+                functionArn = a.getAliasArn
+              )
+            } yield a.getAliasArn
+          }
+        } yield res).get
+      }
+
+      (for {
+        lambdaArn <- Try(deployLambda.value)
+        _ = {println(s"Lambda Deploy: $lambdaArn")}
+        v <- createAliasIfNotExists
+        _ = {println(s"Create Alias: $v")}
+      } yield jar).get
+    },
     deploy := {
       val region = awsRegion.value
       val lambdaName = awsLambdaFunctionName.value
