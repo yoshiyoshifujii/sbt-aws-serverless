@@ -9,6 +9,7 @@ import scala.util.Try
 object AWSLambdaTriggerKinesisStreamPlugin extends AutoPlugin {
 
   object autoImport {
+    lazy val deployLambdaAlias = inputKey[Unit]("")
     lazy val listEventSourceMappings = inputKey[Unit]("")
     lazy val syncEventSourceMappings = inputKey[Unit]("")
     lazy val deleteEventSourceMappings = inputKey[Unit]("")
@@ -25,6 +26,28 @@ object AWSLambdaTriggerKinesisStreamPlugin extends AutoPlugin {
   override def requires = sbtassembly.AssemblyPlugin
 
   override lazy val projectSettings = Seq(
+    deployLambdaAlias := {
+      import complete.DefaultParsers._
+
+      val region = awsRegion.value
+      val functionName = awsLambdaFunctionName.value
+
+      val lambda = AWSLambda(region)
+
+      val arn = spaceDelimited("<aliasName> [publishedVersion] [description]").parsed match {
+        case Seq(aliasName, publishedVersion, description) =>
+          lambda.createOrUpdateAlias(functionName, aliasName, Some(publishedVersion), Some(description))
+        case Seq(aliasName, publishedVersion) =>
+          lambda.createOrUpdateAlias(functionName, aliasName, Some(publishedVersion), None)
+        case Seq(aliasName) =>
+          lambda.createOrUpdateAlias(functionName, aliasName, None, None)
+        case _ =>
+          sys.error("Error createLambdaAlias. useage: createLambdaAlias <aliasName> [publishedVersion] [description]")
+      }
+
+      println(s"Create Alias: ${arn.get}")
+
+    },
     deployLambda := {
       val region = awsRegion.value
       val lambda = AWSLambda(region)
@@ -74,7 +97,6 @@ object AWSLambdaTriggerKinesisStreamPlugin extends AutoPlugin {
     },
     deploy := {
       val region = awsRegion.value
-      val lambdaName = awsLambdaFunctionName.value
       val jar = sbtassembly.AssemblyKeys.assembly.value
       val description = awsLambdaDeployDescription.?.value
       val lambda = AWSLambda(region)
@@ -84,26 +106,11 @@ object AWSLambdaTriggerKinesisStreamPlugin extends AutoPlugin {
         description = description
       )
 
-      lazy val createAliases = (v: String) => Try {
-        awsLambdaAliasNames.value map { name =>
-          (for {
-            a <- lambda.createAlias(
-              functionName = lambdaName,
-              name = s"$name$v",
-              functionVersion = Some(v),
-              description = description
-            )
-          } yield a).get
-        }
-      }
-
       (for {
         lambdaArn <- Try(deployLambda.value)
         _ = {println(s"Lambda Deploy: $lambdaArn")}
         v <- publish
         _ = {println(s"Publish Lambda: ${v.getFunctionArn}")}
-        cars <- createAliases(v.getVersion)
-        _ = {cars.foreach(c => println(s"Create Alias: ${c.getAliasArn}"))}
       } yield jar).get
     },
     listLambdaVersions := {

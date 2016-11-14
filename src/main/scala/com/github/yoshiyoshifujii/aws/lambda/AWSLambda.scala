@@ -149,6 +149,19 @@ trait AWSLambdaWrapper extends AWSWrapper {
     client.createAlias(request)
   }
 
+  def updateAlias(functionName: FunctionName,
+                  name: String,
+                  functionVersion: Option[String],
+                  description: Option[Description]) = Try {
+    val request = new UpdateAliasRequest()
+      .withFunctionName(functionName)
+      .withName(name)
+      .withFunctionVersion(functionVersion.getOrElse("$LATEST"))
+    description.foreach(request.setDescription)
+
+    client.updateAlias(request)
+  }
+
   def getAlias(functionName: FunctionName,
                name: String) = Try {
     val request = new GetAliasRequest()
@@ -157,6 +170,19 @@ trait AWSLambdaWrapper extends AWSWrapper {
 
     toOpt(client.getAlias(request))
   }
+
+  def createOrUpdateAlias(functionName: FunctionName,
+                          name: String,
+                          functionVersion: Option[String],
+                          description: Option[Description]) =
+    for {
+      aliasOpt <- getAlias(functionName, name)
+      aliasArn <- aliasOpt map { a =>
+        updateAlias(functionName, name, functionVersion, description).map(_.getAliasArn)
+      } getOrElse {
+        createAlias(functionName, name, functionVersion, description).map(_.getAliasArn)
+      }
+    } yield aliasArn
 
   def listVersionsByFunction(functionName: FunctionName) = Try {
     val request = new ListVersionsByFunctionRequest()
