@@ -7,7 +7,7 @@ sbt plugin to deploy code to Amazon API Gateway and AWS Lambda
 Add the following to your `project/plugins.sbt` file:
 
 ```sbt
-addSbtPlugin("com.github.yoshiyoshifujii" % "sbt-aws-serverless" % "1.5.0")
+addSbtPlugin("com.github.yoshiyoshifujii" % "sbt-aws-serverless" % "1.6.0")
 ```
 
 Add the `AWSApiGatewayPlugin` auto-plugin to your build.sbt:
@@ -28,6 +28,12 @@ Add the `AWSCustomAuthorizerPlugin` auto-plugin to your build.sbt:
 enablePlugins(AWSCustomAuthorizerPlugin)
 ```
 
+Add the `AWSLambdaTriggerKinesisStreamPlugin` auto-plugin to your build.sbt:
+
+```sbt
+enablePlugins(AWSLambdaTriggerKinesisStreamPlugin)
+```
+
 ## Usage
 
 `sbt createApiGateway [name]` creates a new Amazon API Gateway Rest API.
@@ -39,6 +45,8 @@ enablePlugins(AWSCustomAuthorizerPlugin)
 `sbt "createDeployment test"` deploy the Amazon API Gateway Stages.
 
 `sbt "testMethod test"` test to deploy stage.
+
+`sbt "syncEventSourceMappings test" to create or update Event Source Mappings.
 
 ## Configuration
 
@@ -87,6 +95,14 @@ enablePlugins(AWSCustomAuthorizerPlugin)
 | awsIdentitySourceHeaderName               | The source of the identity in an incoming request.                          |
 | awsIdentityValidationExpression           | A validation expression for the incoming identity.                          |
 | awsAuthorizerResultTtlInSeconds           | The TTL of cached authorizer results.                                       |
+
+
+### AWSLambdaTriggerKinesisStreamPlugin
+
+| sbt setting                               | Description                                                                 |
+|-------------------------------------------|-----------------------------------------------------------------------------|
+| eventSourceNames                          | The name of the Event Source Names.                                         |
+
 
 An example configuration might look like this:
 
