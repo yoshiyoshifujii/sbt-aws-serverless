@@ -48,7 +48,8 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
   def putIntegrationResponse(resourceId: ResourceId,
                              statusCode: StatusCode,
                              selectionPattern: Option[SelectionPattern],
-                             responseTemplates: (String, String)*) = Try {
+                             responseParameters: Map[String, String],
+                             responseTemplates: Map[String, String]) = Try {
     val request = new PutIntegrationResponseRequest()
       .withRestApiId(restApiId)
       .withResourceId(resourceId)
@@ -56,8 +57,14 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
       .withStatusCode(statusCode)
     selectionPattern.foreach(request.setSelectionPattern)
 
+    if (responseParameters.nonEmpty)
+      request.setResponseParameters(
+        responseParameters.map(
+          m => s"method.response.header.${m._1}" -> m._2)
+          .asJava)
+
     if (responseTemplates.nonEmpty)
-      request.setResponseTemplates(responseTemplates.toMap.asJava)
+      request.setResponseTemplates(responseTemplates.asJava)
 
     client.putIntegrationResponse(request)
   }
@@ -73,12 +80,14 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
 
   def putIntegrationResponses(resourceId: ResourceId,
                               responseTemplates: ResponseTemplates) = Try {
+
     responseTemplates.values map { resT =>
       putIntegrationResponse(
         resourceId,
         resT.statusCode,
         resT.selectionPattern,
-        resT.templates: _*
+        resT.parameters,
+        resT.templates
       ).get
     }
   }

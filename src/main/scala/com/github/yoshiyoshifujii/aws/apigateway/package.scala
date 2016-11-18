@@ -46,8 +46,9 @@ package object apigateway {
   case class ResponseTemplates(values: ResponseTemplate*)
 
   case class ResponseTemplate(statusCode: String,
-                              selectionPattern: Option[String],
-                              templates: (String, String)*)
+                              selectionPattern: Option[String] = None,
+                              templates: Map[String, String] = Map(),
+                              parameters: Map[String, String] = Map())
 
   case class IdentitySource(header: String) {
     lazy val mkValue = s"method.request.header.$header"
