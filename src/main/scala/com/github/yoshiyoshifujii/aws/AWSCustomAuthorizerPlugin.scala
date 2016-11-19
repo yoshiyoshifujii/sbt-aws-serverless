@@ -43,6 +43,7 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
           description = awsLambdaDescription.?.value,
           timeout = awsLambdaTimeout.?.value,
           memorySize = awsLambdaMemorySize.?.value,
+          environment = awsLambdaEnvironment.?.value,
           createAfter = arn => lambda.addPermission(arn))
       }
 

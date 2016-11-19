@@ -59,7 +59,8 @@ object AWSLambdaTriggerKinesisStreamPlugin extends AutoPlugin {
         jar = sbtassembly.AssemblyKeys.assembly.value,
         description = awsLambdaDescription.?.value,
         timeout = awsLambdaTimeout.?.value,
-        memorySize = awsLambdaMemorySize.?.value).get
+        memorySize = awsLambdaMemorySize.?.value,
+        environment = awsLambdaEnvironment.?.value).get
     },
     deployDev := {
       val region = awsRegion.value

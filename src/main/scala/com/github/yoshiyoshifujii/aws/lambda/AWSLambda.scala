@@ -8,7 +8,7 @@ import com.github.yoshiyoshifujii.aws.{AWSCredentials, AWSWrapper}
 import com.github.yoshiyoshifujii.cliformatter.CliFormatter
 import sbt._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.util.Try
 
 trait AWSLambdaWrapper extends AWSWrapper {
@@ -47,7 +47,8 @@ trait AWSLambdaWrapper extends AWSWrapper {
              jar: File,
              description: Option[Description],
              timeout: Option[Timeout],
-             memorySize: Option[MemorySize]) = {
+             memorySize: Option[MemorySize],
+             environment: Option[Map[String, String]]) = {
     for {
       key <- s3.put(bucketName, jar)
       code = new FunctionCode()
@@ -63,6 +64,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
         description.foreach(request.setDescription)
         timeout.foreach(request.setTimeout(_))
         memorySize.foreach(request.setMemorySize(_))
+        environment.foreach(e => request.setEnvironment(new Environment().withVariables(e.asJava)))
 
         client.createFunction(request)
       }
@@ -97,7 +99,8 @@ trait AWSLambdaWrapper extends AWSWrapper {
                    handler: Handler,
                    description: Option[Description],
                    timeout: Option[Timeout],
-                   memorySize: Option[MemorySize]) = Try {
+                   memorySize: Option[MemorySize],
+                   environment: Option[Map[String, String]]) = Try {
     val request = new UpdateFunctionConfigurationRequest()
       .withFunctionName(functionName)
       .withRuntime(com.amazonaws.services.lambda.model.Runtime.Java8)
@@ -106,6 +109,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
     description.foreach(request.setDescription)
     timeout.foreach(request.setTimeout(_))
     memorySize.foreach(request.setMemorySize(_))
+    environment.foreach(e => request.setEnvironment(new Environment().withVariables(e.asJava)))
 
     client.updateFunctionConfiguration(request)
   }
@@ -201,7 +205,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
         "Ver" -> 12,
         "Description" -> 45
       ).print3(
-        l.getVersions.map { v =>
+        l.getVersions.asScala.map { v =>
           (v.getLastModified, v.getVersion, v.getDescription)
         }: _*)
       println(p)
@@ -224,7 +228,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
         "Ver" -> 12,
         "Description" -> 45
       ).print3(
-        l.getAliases.map { a =>
+        l.getAliases.asScala.map { a =>
           (findAlias(a.getAliasArn), a.getFunctionVersion, a.getDescription)
         }: _*)
       println(p)
@@ -238,6 +242,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
              description: Option[Description],
              timeout: Option[Timeout],
              memorySize: Option[MemorySize],
+             environment: Option[Map[String, String]],
              createAfter: FunctionArn => Try[Any] = arn => Try()) = {
     for {
       gfr <- get(functionName)
@@ -250,7 +255,8 @@ trait AWSLambdaWrapper extends AWSWrapper {
             handler = handler,
             description = description,
             timeout = timeout,
-            memorySize = memorySize)
+            memorySize = memorySize,
+            environment = environment)
         } yield uc.getFunctionArn
       } getOrElse {
         for {
@@ -262,7 +268,8 @@ trait AWSLambdaWrapper extends AWSWrapper {
             jar = jar,
             description = description,
             timeout = timeout,
-            memorySize = memorySize)
+            memorySize = memorySize,
+            environment = environment)
           _ <- createAfter(c.getFunctionArn)
         } yield c.getFunctionArn
       }
@@ -287,7 +294,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
         "UUID" -> 40,
         "Event Source Arn" -> 100
       ).print4(
-        l.getEventSourceMappings.map { e =>
+        l.getEventSourceMappings.asScala.map { e =>
           (e.getLastModified.toString, e.getState, e.getUUID, e.getEventSourceArn)
         }: _*)
       println(p)
@@ -314,7 +321,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
   def deleteEventSourceMappings(functionArn: FunctionArn) =
     for {
       l <- listEventSourceMappings(functionArn)
-      d <- Try(l.getEventSourceMappings.map(e => deleteEventSourceMapping(e.getUUID).get))
+      d <- Try(l.getEventSourceMappings.asScala.map(e => deleteEventSourceMapping(e.getUUID).get))
     } yield d
 }
 

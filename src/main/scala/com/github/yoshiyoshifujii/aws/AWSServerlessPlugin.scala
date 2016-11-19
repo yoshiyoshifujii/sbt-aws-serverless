@@ -27,6 +27,7 @@ object AWSServerlessPlugin extends AutoPlugin {
     lazy val awsLambdaRole = settingKey[String]("")
     lazy val awsLambdaTimeout = settingKey[Int]("")
     lazy val awsLambdaMemorySize = settingKey[Int]("")
+    lazy val awsLambdaEnvironment = settingKey[Map[String, String]]("")
     lazy val awsLambdaS3Bucket = settingKey[String]("")
     lazy val awsLambdaDeployDescription = settingKey[String]("")
     lazy val awsLambdaAliasNames = settingKey[Seq[String]]("")
@@ -64,6 +65,7 @@ object AWSServerlessPlugin extends AutoPlugin {
         description = awsLambdaDescription.?.value,
         timeout = awsLambdaTimeout.?.value,
         memorySize = awsLambdaMemorySize.?.value,
+        environment = awsLambdaEnvironment.?.value,
         createAfter = arn => lambda.addPermission(arn)).get
     },
     deploy := {

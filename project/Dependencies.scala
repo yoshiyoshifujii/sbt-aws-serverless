@@ -2,7 +2,7 @@ import sbt._
 
 object Dependencies {
 
-  val awsSdkVersion = "1.11.29"
+  val awsSdkVersion = "1.11.58"
 
   val awsJavaSdkLambda      = "com.amazonaws" % "aws-java-sdk-lambda"       % awsSdkVersion
   val awsJavaSdkApiGateway  = "com.amazonaws" % "aws-java-sdk-api-gateway"  % awsSdkVersion
