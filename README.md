@@ -7,7 +7,7 @@ sbt plugin to deploy code to Amazon API Gateway and AWS Lambda
 Add the following to your `project/plugins.sbt` file:
 
 ```sbt
-addSbtPlugin("com.github.yoshiyoshifujii" % "sbt-aws-serverless" % "1.6.0")
+addSbtPlugin("com.github.yoshiyoshifujii" % "sbt-aws-serverless" % "1.8.0")
 ```
 
 Add the `AWSApiGatewayPlugin` auto-plugin to your build.sbt:
@@ -71,6 +71,7 @@ enablePlugins(AWSLambdaTriggerKinesisStreamPlugin)
 | awsLambdaRole                             | The Amazon Resource Name (ARN) of the IAM role.                             |
 | awsLambdaTimeout                          | The function execution time at which Lambda should terminate the function.  |
 | awsLambdaMemorySize                       | The amount of memory, in MB, your Lambda function is given.                 |
+| awsLambdaEnvironment                      | You can define Environment Variables as key/value pairs that are accessible from your function code. |
 | awsLambdaS3Bucket                         | The name of an S3 bucket where the lambda code will be stored.              |
 | awsLambdaDeployDescription                | The description for the version you are publishing.                         |
 | awsLambdaAliasNames                       | Name for the alias you are creating.                                        |
@@ -162,6 +163,7 @@ val lambdaSettings = apiGatewaySettings ++ Seq(
   awsLambdaRole := roleArn,
   awsLambdaTimeout := 15,
   awsLambdaMemorySize := 1536,
+  awsLambdaEnvironment := Map("HOGE" -> "FUGA"),
   awsLambdaS3Bucket := bucketName,
   awsLambdaDeployDescription := s"${version.value}",
   awsLambdaAliasNames := Seq(
