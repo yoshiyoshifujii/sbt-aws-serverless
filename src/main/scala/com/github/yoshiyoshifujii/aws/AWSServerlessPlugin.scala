@@ -14,7 +14,7 @@ object AWSServerlessPlugin extends AutoPlugin {
   object autoImport {
     lazy val deployLambda = taskKey[String]("")
     lazy val deploy = taskKey[File]("")
-    lazy val deployDev = taskKey[File]("")
+    lazy val deployDev = inputKey[File]("")
     lazy val deployResource = taskKey[Unit]("")
     lazy val listLambdaVersions = taskKey[Unit]("")
     lazy val listLambdaAliases = taskKey[Unit]("")
@@ -126,21 +126,22 @@ object AWSServerlessPlugin extends AutoPlugin {
       } yield jar).get
     },
     deployDev := {
+      import complete.DefaultParsers._
       val region = awsRegion.value
       val lambdaName = awsLambdaFunctionName.value
       val jar = sbtassembly.AssemblyKeys.assembly.value
       val lambda = AWSLambda(region)
 
-      lazy val createAliasIfNotExists = Try {
+      lazy val createAliasIfNotExists = (aliasName: String) => Try {
         (for {
-          aOp <- lambda.getAlias(lambdaName, "dev")
+          aOp <- lambda.getAlias(lambdaName, aliasName)
           res <- aOp map { a =>
             Try(a.getAliasArn)
           } getOrElse {
             for {
               a <- lambda.createAlias(
                 functionName = lambdaName,
-                name = s"dev",
+                name = aliasName,
                 functionVersion = Some("$LATEST"),
                 description = None
               )
@@ -152,12 +153,17 @@ object AWSServerlessPlugin extends AutoPlugin {
         } yield res).get
       }
 
+      val aliasName = spaceDelimited("[aliasName]").parsed match {
+        case Seq(an) => an
+        case _ => "dev"
+      }
+
       (for {
         lambdaArn <- Try(deployLambda.value)
         _ = {println(s"Lambda Deploy: $lambdaArn")}
-        v <- createAliasIfNotExists
+        v <- createAliasIfNotExists(aliasName)
         _ = {println(s"Create Alias: $v")}
-        resource <- Try(deployResource.value)
+        _ <- Try(deployResource.value)
         _ = {println(s"Api Gateway Deploy")}
       } yield jar).get
     },
