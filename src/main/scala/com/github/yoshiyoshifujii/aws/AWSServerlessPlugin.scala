@@ -13,6 +13,7 @@ object AWSServerlessPlugin extends AutoPlugin {
 
   object autoImport {
     lazy val deployLambda = taskKey[String]("")
+    lazy val deployLambdaAlias = inputKey[Unit]("")
     lazy val deploy = taskKey[File]("")
     lazy val deployDev = inputKey[File]("")
     lazy val deployResource = taskKey[Unit]("")
@@ -67,6 +68,54 @@ object AWSServerlessPlugin extends AutoPlugin {
         memorySize = awsLambdaMemorySize.?.value,
         environment = awsLambdaEnvironment.?.value,
         createAfter = arn => lambda.addPermission(arn)).get
+    },
+    deployLambdaAlias := {
+      import complete.DefaultParsers._
+
+      val region = awsRegion.value
+      val functionName = awsLambdaFunctionName.value
+
+      val lambda = AWSLambda(region)
+
+      def deployAlias(aliasName: String,
+                      functionVersion: Option[String],
+                      description: Option[String]) =
+        for {
+          aOp <- lambda.getAlias(functionName, aliasName)
+          res <- aOp map { _ =>
+            lambda.updateAlias(
+              functionName = functionName,
+              name = aliasName,
+              functionVersion = functionVersion,
+              description = description
+            ).map(_.getAliasArn)
+          } getOrElse {
+            for {
+              a <- lambda.createAlias(
+                functionName = functionName,
+                name = aliasName,
+                functionVersion = functionVersion,
+                description = description
+              )
+              _ <- lambda.addPermission(
+                functionArn = a.getAliasArn
+              )
+            } yield a.getAliasArn
+          }
+        } yield res
+
+      val arn = spaceDelimited("<aliasName> [publishedVersion] [description]").parsed match {
+        case Seq(aliasName, publishedVersion, description) =>
+          deployAlias(aliasName, Some(publishedVersion), Some(description))
+        case Seq(aliasName, publishedVersion) =>
+          deployAlias(aliasName, Some(publishedVersion), None)
+        case Seq(aliasName) =>
+          deployAlias(aliasName, Some("$LATEST"), None)
+        case _ =>
+          sys.error("Error deployLambdaAlias. useage: deployLambdaAlias <aliasName> [publishedVersion] [description]")
+      }
+
+      println(s"Deploy Alias: ${arn.get}")
     },
     deploy := {
       val region = awsRegion.value
