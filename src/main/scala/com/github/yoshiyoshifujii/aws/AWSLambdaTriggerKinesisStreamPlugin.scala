@@ -9,7 +9,6 @@ import scala.util.Try
 object AWSLambdaTriggerKinesisStreamPlugin extends AutoPlugin {
 
   object autoImport {
-    lazy val deployLambdaAlias = inputKey[Unit]("")
     lazy val listEventSourceMappings = inputKey[Unit]("")
     lazy val syncEventSourceMappings = inputKey[Unit]("")
     lazy val deleteEventSourceMappings = inputKey[Unit]("")
@@ -42,11 +41,10 @@ object AWSLambdaTriggerKinesisStreamPlugin extends AutoPlugin {
         case Seq(aliasName) =>
           lambda.createOrUpdateAlias(functionName, aliasName, None, None)
         case _ =>
-          sys.error("Error createLambdaAlias. useage: createLambdaAlias <aliasName> [publishedVersion] [description]")
+          sys.error("Error deployLambdaAlias. useage: deployLambdaAlias <aliasName> [publishedVersion] [description]")
       }
 
-      println(s"Create Alias: ${arn.get}")
-
+      println(s"Deploy Alias: ${arn.get}")
     },
     deployLambda := {
       val region = awsRegion.value
