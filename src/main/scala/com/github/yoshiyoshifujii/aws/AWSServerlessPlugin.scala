@@ -14,7 +14,7 @@ object AWSServerlessPlugin extends AutoPlugin {
   object autoImport {
     lazy val deployLambda = taskKey[String]("")
     lazy val deployLambdaAlias = inputKey[Unit]("")
-    lazy val deploy = taskKey[File]("")
+    lazy val deploy2 = taskKey[File]("")
     lazy val deployDev = inputKey[File]("")
     lazy val deployResource = taskKey[Unit]("")
     lazy val listLambdaVersions = taskKey[Unit]("")
@@ -117,7 +117,7 @@ object AWSServerlessPlugin extends AutoPlugin {
 
       println(s"Deploy Alias: ${arn.get}")
     },
-    deploy := {
+    deploy2 := {
       val region = awsRegion.value
       val lambdaName = awsLambdaFunctionName.value
       val jar = sbtassembly.AssemblyKeys.assembly.value

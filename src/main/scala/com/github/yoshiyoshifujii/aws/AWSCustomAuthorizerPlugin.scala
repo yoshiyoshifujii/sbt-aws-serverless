@@ -27,7 +27,7 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
       val region = awsRegion.value
       AWSApiGatewayRestApi(region).printAuthorizers(awsApiGatewayRestApiId.value)
     },
-    deploy := {
+    deploy2 := {
       val region = awsRegion.value
       val lambdaName = awsLambdaFunctionName.value
       val jar = sbtassembly.AssemblyKeys.assembly.value
@@ -53,7 +53,7 @@ object AWSCustomAuthorizerPlugin extends AutoPlugin {
         _ <- Try(deployAuthorizer.value)
       } yield jar).get
     },
-    deployDev := deploy.value,
+    deployDev := deploy2.value,
     deployAuthorizer := {
       val region = awsRegion.value
       (for {

@@ -18,6 +18,7 @@ trait ServerlessKeys {
 
   lazy val remove         = taskKey[Unit]("")
 
+  lazy val serverless     = settingKey[ServerlessOption]("")
 }
 
 object ServerlessKeys extends ServerlessKeys

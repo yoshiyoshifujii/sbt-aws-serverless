@@ -6,9 +6,11 @@ import Def.Initialize
 
 object Serverless {
   import sbtassembly.AssemblyPlugin.autoImport._
+  import ServerlessPlugin.autoImport._
 
   def deployTask(key: TaskKey[Unit]): Initialize[Task[Unit]] = Def.task {
     println((assemblyOutputPath in key).value)
+    println((serverless in key).value)
   }
 
 }

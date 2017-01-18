@@ -94,7 +94,7 @@ object AWSLambdaTriggerKinesisStreamPlugin extends AutoPlugin {
         _ = {println(s"Create Alias: $v")}
       } yield jar).get
     },
-    deploy := {
+    deploy2 := {
       val region = awsRegion.value
       val jar = sbtassembly.AssemblyKeys.assembly.value
       val description = awsLambdaDeployDescription.?.value
