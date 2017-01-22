@@ -1,6 +1,7 @@
 package com.github.yoshiyoshifujii.aws.serverless
 
 import sbt._
+import serverless.ServerlessOption
 
 trait ServerlessKeys {
 
@@ -18,7 +19,7 @@ trait ServerlessKeys {
 
   lazy val remove         = taskKey[Unit]("")
 
-  lazy val serverless     = settingKey[ServerlessOption]("")
+  lazy val serverlessOption = settingKey[ServerlessOption]("")
 }
 
 object ServerlessKeys extends ServerlessKeys
