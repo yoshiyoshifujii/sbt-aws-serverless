@@ -27,6 +27,7 @@ object ServerlessPlugin extends AutoPlugin {
         ),
         Functions(
           Function(
+            filePath = null,
             name = "hoge",
             handler = "",
             role = "",

@@ -1,4 +1,6 @@
 
+import sbt._
+
 package object serverless {
 
   case class Provider(awsAccount: String,
@@ -28,7 +30,8 @@ package object serverless {
 
   case class Events(events: Event*)
 
-  case class Function(name: String,
+  case class Function(filePath: File,
+                      name: String,
                       description: Option[String] = None,
                       handler: String,
                       memorySize: Int = 512,

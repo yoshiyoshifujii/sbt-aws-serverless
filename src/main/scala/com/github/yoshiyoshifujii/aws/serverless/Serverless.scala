@@ -13,10 +13,11 @@ object Serverless {
   import ServerlessPlugin.autoImport._
 
   def deployTask(key: TaskKey[Unit]): Initialize[Task[Unit]] = Def.task {
-    println((assemblyOutputPath in key).value)
-    println((serverlessOption in key).value)
-    println(name.value)
+    val a = (serverlessOption in key).value
 
+    a.functions.functions.foreach( f =>
+      println(f)
+    )
 
   }
 
