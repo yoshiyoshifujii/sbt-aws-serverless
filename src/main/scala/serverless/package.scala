@@ -1,4 +1,3 @@
-
 import sbt._
 
 package object serverless {
@@ -6,29 +5,8 @@ package object serverless {
   case class Provider(awsAccount: String,
                       stage: String = "dev",
                       region: String = "us-east-1",
-                      deploymentBucket: String)
-
-  case class Authorizer(name: String,
-                        arn: String,
-                        resultTtlInSeconds: Int,
-                        identitySourceHeaderName: String = "Authorization",
-                        identityValidationExpression: String)
-
-  trait Event
-
-  case class HttpEvent(path: String,
-                       method: String,
-                       uriLambdaAlias: String = "${stageVariables.env}",
-                       cors: Boolean = false,
-                       `private`: Boolean = false,
-                       authorizer: Authorizer = null) extends Event
-
-  case class StreamEvent(arn: String,
-                         batchSize: Int = 100,
-                         startingPosition: String,
-                         enabled: Boolean = false) extends Event
-
-  case class Events(events: Event*)
+                      deploymentBucket: String,
+                      swagger: File)
 
   case class Function(filePath: File,
                       name: String,
@@ -40,7 +18,11 @@ package object serverless {
                       environment: Map[String, String] = Map.empty,
                       events: Events)
 
-  case class Functions(functions: Function*)
+  case class Functions(private val functions: Function*) {
+
+    def foreach[U](f: Function => U): Unit = functions.foreach(f)
+
+  }
 
   case class ServerlessOption(provider: Provider,
                               functions: Functions)

@@ -1,7 +1,7 @@
 package com.github.yoshiyoshifujii.aws.serverless
 
 import sbt._
-import serverless._
+import Keys._
 
 object ServerlessPlugin extends AutoPlugin {
 
@@ -18,29 +18,10 @@ object ServerlessPlugin extends AutoPlugin {
 
   lazy val serverlessSettings: Seq[Def.Setting[_]] = Seq(
     deploy := Serverless.deployTask(deploy).value,
+    name in deploy := name.value,
+    description in deploy := description.value,
+    version in deploy := version.value,
     assemblyOutputPath in deploy := (assemblyOutputPath in assembly).value,
-    serverlessOption := {
-      ServerlessOption(
-        Provider(
-          awsAccount = "",
-          deploymentBucket = "hogehoge"
-        ),
-        Functions(
-          Function(
-            filePath = null,
-            name = "hoge",
-            handler = "",
-            role = "",
-            events = Events(
-              HttpEvent(
-                path = "/hoge",
-                method = "GET"
-              )
-            )
-          )
-        )
-      )
-    },
     serverlessOption in deploy := serverlessOption.value
   )
 }
