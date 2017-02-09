@@ -18,7 +18,7 @@ case class StreamEvent(arn: String,
                        enabled: Boolean = false) extends Event
 
 case class Events(events: Event*) {
-  def httpEventsForeach[U](f: HttpEvent => U): Unit =
-    events.filter(_.isInstanceOf[HttpEvent]).foreach(e => f(e.asInstanceOf[HttpEvent]))
+  def httpEventsMap[B](f: HttpEvent => B): Seq[B] =
+    events.filter(_.isInstanceOf[HttpEvent]).map(e => f(e.asInstanceOf[HttpEvent]))
 }
 

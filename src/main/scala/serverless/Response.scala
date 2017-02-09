@@ -32,7 +32,7 @@ object ResponseTemplatePatterns {
   val corsMap = (cors: Boolean) => if (cors) Map("Access-Control-Allow-Origin" -> "'*'") else Map.empty[String, String]
 
   val Response200 = (cors: Boolean) => ResponseTemplate("200", parameters = corsMap(cors))
-  val Response204 = (cors: Boolean) => ResponseTemplate("204", parameters = corsMap(cors))
+  val Response204 = (cors: Boolean) => ResponseTemplate("204", Some(""".*"statusCode":204.*"""), parameters = corsMap(cors))
   val Response400 = (cors: Boolean) => ResponseTemplate("400", Some(""".*"statusCode":400.*"""), Map("application/json" -> responseErrorTemplate), parameters = corsMap(cors))
   val Response401 = (cors: Boolean) => ResponseTemplate("401", Some(""".*"statusCode":401.*"""), Map("application/json" -> responseErrorTemplate), parameters = corsMap(cors))
   val Response403 = (cors: Boolean) => ResponseTemplate("403", Some(""".*"statusCode":403.*"""), Map("application/json" -> responseErrorTemplate), parameters = corsMap(cors))

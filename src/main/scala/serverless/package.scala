@@ -6,7 +6,8 @@ package object serverless {
                       stage: String = "dev",
                       region: String = "us-east-1",
                       deploymentBucket: String,
-                      swagger: File)
+                      swagger: File,
+                      restApiId: Option[String] = None)
 
   case class Function(filePath: File,
                       name: String,
@@ -21,6 +22,8 @@ package object serverless {
   case class Functions(private val functions: Function*) {
 
     def foreach[U](f: Function => U): Unit = functions.foreach(f)
+
+    def map[B](f: Function => B) = functions.map(f)
 
   }
 
