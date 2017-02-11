@@ -10,9 +10,7 @@ import com.github.yoshiyoshifujii.aws.lambda.{AWSLambda, FunctionName}
 import scala.util.{Success, Try}
 
 object Serverless {
-  import sbtassembly.AssemblyPlugin.autoImport._
   import ServerlessPlugin.autoImport._
-
 
   def deployTask(key: TaskKey[Unit]): Initialize[Task[Unit]] = Def.task {
     val so = (serverlessOption in key).value
@@ -31,12 +29,15 @@ object Serverless {
           ).map(_.getId)
         }
       }
+      _ = { println(s"API Gateway created: $restApiId") }
 
-      _ <- api.put(
+      putRestApiResult <- api.put(
         restApiId = restApiId,
         body = so.provider.swagger,
         mode = PutMode.Merge,
-        failOnWarnings = None)
+        failOnWarnings = None
+      )
+      _ = { println(s"API Gateway put: ${putRestApiResult.getId}") }
 
       _ <- sequence {
         lazy val authorize = AWSApiGatewayAuthorize(
@@ -56,11 +57,13 @@ object Serverless {
               environment = Option(function.environment),
               createAfter = arn => lambda.addPermission(arn)
             )
+            _ = { println(s"Lambda deployed: $functionArn") }
 
             publishVersionResult <- lambda.publishVersion(
               functionName = function.name,
               description = (version in deploy).?.value
             )
+            _ = { println(s"Lambda published: ${publishVersionResult.getFunctionArn}") }
 
             aliasArn <- deployAlias(
               lambda = lambda,
@@ -69,6 +72,7 @@ object Serverless {
               functionVersion = Option(publishVersionResult.getVersion),
               description = (version in deploy).?.value
             )
+            _ = { println(s"Lambda Alias: $aliasArn") }
 
             _ <- sequence {
               function.events.httpEventsMap { httpEvent =>
@@ -82,27 +86,31 @@ object Serverless {
                 for {
                   _ <- swap {
                     httpEvent.authorizer.map { au =>
-                      authorize.deployAuthorizer(
-                        name = au.name,
-                        awsAccountId = so.provider.awsAccount,
-                        lambdaName = function.name,
-                        lambdaAlias = None,
-                        identitySourceHeaderName = au.identitySourceHeaderName,
-                        identityValidationExpression = au.identityValidationExpression,
-                        authorizerResultTtlInSeconds = Option(au.resultTtlInSeconds)
-                      )
+                      for {
+                        authorizerId <- authorize.deployAuthorizer(
+                          name = au.name,
+                          awsAccountId = so.provider.awsAccount,
+                          lambdaName = au.name,
+                          lambdaAlias = None,
+                          identitySourceHeaderName = au.identitySourceHeaderName,
+                          identityValidationExpression = au.identityValidationExpression,
+                          authorizerResultTtlInSeconds = Option(au.resultTtlInSeconds)
+                        )
+                        _ = { println(s"Authorizer: $authorizerId") }
+                      } yield ()
                     }
                   }
-                  _ <- method.deploy(
+                  resourceOpt <- method.deploy(
                     awsAccountId = so.provider.awsAccount,
                     lambdaName = function.name,
-                    lambdaAlias = Option(s"$${stageVariables.env}${publishVersionResult.getVersion}"),
+                    lambdaAlias = Option(s"${httpEvent.uriLambdaAlias}${publishVersionResult.getVersion}"),
                     requestTemplates = RequestTemplates(httpEvent.request.templateToSeq: _*),
                     responseTemplates = httpEvent.response.statusCodes,
                     withAuth(method)(
                       AWSApiGatewayAuthorize(so.provider.region, restApiId))(
                       httpEvent.authorizer.map(_.name))
                   )
+                  _ = { resourceOpt.foreach(r => println(s"Resource: ${r.toString}")) }
                 } yield ()
               }
             }
@@ -110,6 +118,16 @@ object Serverless {
           } yield ()
         }
       }
+
+      createDeploymentResult <- api.createDeployment(
+        restApiId = restApiId,
+        stageName = so.provider.stage,
+        stageDescription = None,
+        description = Some(version.value),
+        variables = so.provider.getStageVariables
+      )
+      _ = { println(s"Create Deployment: ${createDeploymentResult.toString}") }
+
     } yield ()
 
     a.get

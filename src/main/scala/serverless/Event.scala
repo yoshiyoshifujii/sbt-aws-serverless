@@ -22,3 +22,6 @@ case class Events(events: Event*) {
     events.filter(_.isInstanceOf[HttpEvent]).map(e => f(e.asInstanceOf[HttpEvent]))
 }
 
+object Events {
+  def empty: Events = Events()
+}

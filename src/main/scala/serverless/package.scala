@@ -7,7 +7,15 @@ package object serverless {
                       region: String = "us-east-1",
                       deploymentBucket: String,
                       swagger: File,
-                      restApiId: Option[String] = None)
+                      restApiId: Option[String] = None,
+                      stageVariables: Option[Map[String, String]] = None) {
+
+    lazy val getStageVariables: Option[Map[String, String]] =
+      stageVariables.orElse(Some(Map(
+        "env" -> stage,
+        "region" -> region
+      )))
+  }
 
   case class Function(filePath: File,
                       name: String,
@@ -17,7 +25,7 @@ package object serverless {
                       timeout: Int = 10,
                       role: String,
                       environment: Map[String, String] = Map.empty,
-                      events: Events)
+                      events: Events = Events.empty)
 
   case class Functions(private val functions: Function*) {
 
