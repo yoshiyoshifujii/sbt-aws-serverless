@@ -33,6 +33,8 @@ package object serverless {
 
     def map[B](f: Function => B) = functions.map(f)
 
+    def find(functionName: String) = functions.find(f => f.name == functionName)
+
   }
 
   case class ServerlessOption(provider: Provider,
