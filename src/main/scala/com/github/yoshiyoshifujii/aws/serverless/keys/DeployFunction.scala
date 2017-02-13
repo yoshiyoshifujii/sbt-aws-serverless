@@ -1,16 +1,12 @@
 package com.github.yoshiyoshifujii.aws.serverless.keys
 
-import com.github.yoshiyoshifujii.aws.lambda.AWSLambda
 import serverless.{Function, ServerlessOption}
 
 import scala.util.Try
 
-trait DeployFunctionBase {
+trait DeployFunctionBase extends KeysBase {
 
-  val so: ServerlessOption
-  lazy protected val lambda = AWSLambda(so.provider.region)
-
-  def deployFunction(function: Function): Try[String] =
+  def invoke(function: Function): Try[String] =
     lambda.deploy(
       functionName = function.name,
       role = function.role,

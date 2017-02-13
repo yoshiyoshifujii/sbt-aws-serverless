@@ -42,7 +42,7 @@ trait DeployBase extends DeployFunctionBase {
         )
         so.functions.map { function =>
           for {
-            functionArn <- deployFunction(function)
+            functionArn <- invoke(function)
 
             publishVersionResult <- lambda.publishVersion(
               functionName = function.name,
@@ -53,7 +53,7 @@ trait DeployBase extends DeployFunctionBase {
             aliasArn <- deployAlias(
               lambda = lambda,
               functionName = function.name,
-              aliasName = so.provider.stage,
+              aliasName = s"${so.provider.stage}${publishVersionResult.getVersion}",
               functionVersion = Option(publishVersionResult.getVersion),
               description = version
             )
