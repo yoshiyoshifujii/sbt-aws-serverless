@@ -7,7 +7,7 @@ trait ServerlessKeys {
 
   lazy val deploy         = taskKey[Unit]("")
 
-  lazy val deployFunction = taskKey[Unit]("")
+  lazy val deployFunction = inputKey[Unit]("")
 
   lazy val deployList     = taskKey[Unit]("")
 
