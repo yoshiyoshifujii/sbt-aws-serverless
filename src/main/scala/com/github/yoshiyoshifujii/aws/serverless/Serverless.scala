@@ -4,10 +4,9 @@ import sbt._
 import Keys._
 import Def.Initialize
 import complete.DefaultParsers._
-import com.github.yoshiyoshifujii.aws.serverless.keys.Deploy
+import com.github.yoshiyoshifujii.aws.serverless.keys.{Deploy, DeployFunction}
 
-object Serverless
-  extends Deploy {
+object Serverless {
 
   import ServerlessPlugin.autoImport._
 
@@ -17,26 +16,19 @@ object Serverless
     val rootDescription = (description in key).?.value
     val rootVersion = (version in key).?.value
 
-    deployInvoke(so, rootName, rootDescription, rootVersion).get
+    Deploy(so, rootName, rootDescription, rootVersion).invoke.get
   }
 
-
   def deployFunctionTask(key: TaskKey[Unit]): Initialize[InputTask[Unit]] = Def.inputTask {
-
-    spaceDelimited("<functionName>").parsed match {
-      case Seq(functionName) =>
-        val so = (serverlessOption in key).value
-        val rootName = (name in key).value
-        val rootDescription = (description in key).?.value
-        val rootVersion = (version in key).?.value
-
-        val function = so.functions.find(functionName)
-
-        println(function)
-        ()
-      case _ =>
-        sys.error("Error deployFunction. useage: deployFunction <functionName>")
+    (for {
+      functionName <- spaceDelimited("<functionName>").parsed match {
+        case Seq(a) => Some(a)
+        case _ => None
+      }
+      so = (serverlessOption in key).value
+      function <- so.functions.find(functionName)
+    } yield DeployFunction(so).deployFunction(function).get).getOrElse {
+      sys.error("Error deployFunction. useage: deployFunction <functionName>")
     }
-
   }
 }

@@ -2,20 +2,18 @@ package com.github.yoshiyoshifujii.aws.serverless.keys
 
 import com.amazonaws.services.apigateway.model.PutMode
 import com.github.yoshiyoshifujii.aws.apigateway.{AWSApiGatewayAuthorize, AWSApiGatewayMethods, AWSApiGatewayRestApi, RequestTemplates}
-import com.github.yoshiyoshifujii.aws.lambda.AWSLambda
 import serverless.ServerlessOption
 
 import scala.util.Try
 
-trait Deploy {
+trait DeployBase extends DeployFunctionBase {
+  val name: String
+  val description: Option[String]
+  val version: Option[String]
 
-  def deployInvoke(so: ServerlessOption,
-                   name: String,
-                   description: Option[String],
-                   version: Option[String]): Try[Unit] = {
+  def invoke: Try[Unit] = {
 
     val api = AWSApiGatewayRestApi(so.provider.region)
-    val lambda = AWSLambda(so.provider.region)
 
     for {
       restApiId <- {
@@ -44,19 +42,7 @@ trait Deploy {
         )
         so.functions.map { function =>
           for {
-            functionArn <- lambda.deploy(
-              functionName = function.name,
-              role = function.role,
-              handler = function.handler,
-              bucketName = so.provider.deploymentBucket,
-              jar = function.filePath,
-              description = function.description,
-              timeout = Option(function.timeout),
-              memorySize = Option(function.memorySize),
-              environment = Option(function.environment),
-              createAfter = arn => lambda.addPermission(arn)
-            )
-            _ = { println(s"Lambda deployed: $functionArn") }
+            functionArn <- deployFunction(function)
 
             publishVersionResult <- lambda.publishVersion(
               functionName = function.name,
@@ -131,3 +117,9 @@ trait Deploy {
   }
 
 }
+
+case class Deploy(so: ServerlessOption,
+                  name: String,
+                  description: Option[String],
+                  version: Option[String]) extends DeployBase
+
