@@ -1,7 +1,7 @@
 package com.github.yoshiyoshifujii.aws.serverless.keys
 
 import com.amazonaws.services.apigateway.model.PutMode
-import com.github.yoshiyoshifujii.aws.apigateway.{AWSApiGatewayAuthorize, AWSApiGatewayMethods, AWSApiGatewayRestApi, RequestTemplates}
+import com.github.yoshiyoshifujii.aws.apigateway.{AWSApiGatewayAuthorize, AWSApiGatewayMethods, RequestTemplates}
 import serverless.ServerlessOption
 
 import scala.util.Try
@@ -12,8 +12,6 @@ trait DeployBase extends DeployFunctionBase {
   val version: Option[String]
 
   def invoke: Try[Unit] = {
-
-    val api = AWSApiGatewayRestApi(so.provider.region)
 
     for {
       restApiId <- {

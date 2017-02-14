@@ -4,7 +4,6 @@ import sbt._
 import Keys._
 import Def.Initialize
 import complete.DefaultParsers._
-import com.github.yoshiyoshifujii.aws.serverless.keys.{Deploy, DeployFunction, DeployList}
 
 object Serverless {
 
@@ -16,7 +15,7 @@ object Serverless {
     val rootDescription = (description in key).?.value
     val rootVersion = (version in key).?.value
 
-    Deploy(so, rootName, rootDescription, rootVersion).invoke.get
+    keys.Deploy(so, rootName, rootDescription, rootVersion).invoke.get
   }
 
   def deployFunctionTask(key: TaskKey[Unit]): Initialize[InputTask[Unit]] = Def.inputTask {
@@ -27,7 +26,7 @@ object Serverless {
       }
       so = (serverlessOption in key).value
       function <- so.functions.find(functionName)
-      _ = DeployFunction(so).invoke(function).get
+      _ = keys.DeployFunction(so).invoke(function).get
     } yield ()).getOrElse {
       sys.error("Error deployFunction. useage: deployFunction <functionName>")
     }
@@ -36,7 +35,13 @@ object Serverless {
   def deployListTask(key: TaskKey[Unit]): Initialize[Task[Unit]] = Def.task {
     val so = (serverlessOption in key).value
 
-    DeployList(so).invoke.get
+    keys.DeployList(so).invoke.get
+  }
+
+  def remove(key: TaskKey[Unit]): Initialize[Task[Unit]] = Def.task {
+    val so = (serverlessOption in key).value
+
+    keys.Remove(so).invoke.get
   }
 
 }
