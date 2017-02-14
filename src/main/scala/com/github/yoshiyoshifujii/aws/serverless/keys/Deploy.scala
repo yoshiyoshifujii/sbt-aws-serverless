@@ -11,7 +11,7 @@ trait DeployBase extends DeployFunctionBase {
   val description: Option[String]
   val version: Option[String]
 
-  def invoke: Try[Unit] = {
+  def invoke(stage: String): Try[Unit] = {
 
     for {
       restApiId <- {
@@ -51,7 +51,7 @@ trait DeployBase extends DeployFunctionBase {
             aliasArn <- deployAlias(
               lambda = lambda,
               functionName = function.name,
-              aliasName = s"${so.provider.stage}${publishVersionResult.getVersion}",
+              aliasName = s"$stage${publishVersionResult.getVersion}",
               functionVersion = Option(publishVersionResult.getVersion),
               description = version
             )
@@ -104,10 +104,10 @@ trait DeployBase extends DeployFunctionBase {
 
       createDeploymentResult <- api.createDeployment(
         restApiId = restApiId,
-        stageName = so.provider.stage,
+        stageName = stage,
         stageDescription = None,
         description = version,
-        variables = so.provider.getStageVariables
+        variables = so.provider.getStageVariables(stage)
       )
       _ = { println(s"Create Deployment: ${createDeploymentResult.toString}") }
 

@@ -3,18 +3,18 @@ import sbt._
 package object serverless {
 
   case class Provider(awsAccount: String,
-                      stage: String = "dev",
                       region: String = "us-east-1",
                       deploymentBucket: String,
                       swagger: File,
                       restApiId: Option[String] = None,
                       stageVariables: Option[Map[String, String]] = None) {
 
-    lazy val getStageVariables: Option[Map[String, String]] =
-      stageVariables.orElse(Some(Map(
-        "env" -> stage,
-        "region" -> region
-      )))
+    lazy val getStageVariables: String => Option[Map[String, String]] =
+      (stage: String) =>
+        stageVariables.orElse(Some(Map(
+          "env" -> stage,
+          "region" -> region
+        )))
   }
 
   case class Function(filePath: File,

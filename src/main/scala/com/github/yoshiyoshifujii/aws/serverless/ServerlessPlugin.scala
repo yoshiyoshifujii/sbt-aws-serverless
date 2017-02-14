@@ -17,7 +17,7 @@ object ServerlessPlugin extends AutoPlugin {
   override def projectSettings: Seq[Def.Setting[_]] = serverlessSettings
 
   lazy val serverlessSettings: Seq[Def.Setting[_]] = Seq(
-    deploy := Serverless.deployTask(deploy).value,
+    deploy := Serverless.deployTask(deploy).evaluated,
     deployFunction := Serverless.deployFunctionTask(deploy).evaluated,
     deployList := Serverless.deployListTask(deploy).value,
     remove := Serverless.remove(deploy).value,
