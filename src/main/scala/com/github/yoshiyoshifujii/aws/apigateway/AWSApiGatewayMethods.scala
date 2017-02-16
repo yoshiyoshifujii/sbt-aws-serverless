@@ -27,6 +27,19 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     client.putIntegration(request)
   }
 
+  def putIntegrationMock(resourceId: ResourceId,
+                         method: HttpMethod) = Try {
+    val request = new PutIntegrationRequest()
+      .withRestApiId(restApiId)
+      .withResourceId(resourceId)
+      .withHttpMethod(method)
+      .withType(IntegrationType.MOCK)
+      .withRequestTemplates(Map("application/json" -> """{\"statusCode\": 200}""").asJava)
+      .withPassthroughBehavior("WHEN_NO_TEMPLATES")
+
+    client.putIntegration(request)
+  }
+
   def getIntegration(resourceId: ResourceId) = Try {
     val request = new GetIntegrationRequest()
       .withRestApiId(restApiId)
@@ -46,6 +59,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
   }
 
   def putIntegrationResponse(resourceId: ResourceId,
+                             method: HttpMethod,
                              statusCode: StatusCode,
                              selectionPattern: Option[SelectionPattern],
                              responseParameters: Map[String, String],
@@ -53,7 +67,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     val request = new PutIntegrationResponseRequest()
       .withRestApiId(restApiId)
       .withResourceId(resourceId)
-      .withHttpMethod(httpMethod)
+      .withHttpMethod(method)
       .withStatusCode(statusCode)
     selectionPattern.foreach(request.setSelectionPattern)
 
@@ -84,6 +98,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     responseTemplates.values map { resT =>
       putIntegrationResponse(
         resourceId,
+        httpMethod,
         resT.statusCode,
         resT.selectionPattern,
         resT.parameters,
@@ -92,37 +107,146 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     }
   }
 
+  def putMethodResponse(resourceId: ResourceId,
+                        method: HttpMethod,
+                        statusCode: StatusCode,
+                        responseParameters: (String, Boolean)*) = Try {
+    val request = new PutMethodResponseRequest()
+      .withRestApiId(restApiId)
+      .withResourceId(resourceId)
+      .withHttpMethod(method)
+      .withStatusCode(statusCode)
+
+    responseParameters.foreach { case (k,v) =>
+      request.addResponseParametersEntry(k, v)
+    }
+
+    client.putMethodResponse(request)
+  }
+
+  def getMethodResponse(resourceId: ResourceId,
+                        statusCode: StatusCode) = Try {
+    val request = new GetMethodResponseRequest()
+      .withRestApiId(restApiId)
+      .withResourceId(resourceId)
+      .withHttpMethod(httpMethod)
+      .withStatusCode(statusCode)
+
+    client.getMethodResponse(request)
+  }
+
+  def updateMethodResponse(resourceId: ResourceId,
+                           statusCode: StatusCode,
+                           patchOperatios: (PatchPath, PatchValue, Op)*) = Try {
+    val request = new UpdateMethodResponseRequest()
+      .withRestApiId(restApiId)
+      .withResourceId(resourceId)
+      .withHttpMethod(httpMethod)
+      .withStatusCode(statusCode)
+      .withPatchOperations(patchOperatios.map(g => generatePatch(g._1)(g._2)(g._3)).asJava)
+
+    client.updateMethodResponse(request)
+  }
+
   def getResource =
     for {
       resources <- getResources(restApiId)
     } yield resources.getItems.find(_.getPath == path)
 
+  def getMethod(resourceId: ResourceId,
+                method: HttpMethod) = Try {
+    val request = new GetMethodRequest()
+      .withRestApiId(restApiId)
+      .withResourceId(resourceId)
+      .withHttpMethod(method)
+
+    toOpt(client.getMethod(request))
+  }
+
+  def putMethod(resourceId: ResourceId,
+                method: HttpMethod,
+                getMethodResult: GetMethodResult) = Try {
+    val request = new PutMethodRequest()
+      .withRestApiId(restApiId)
+      .withResourceId(resourceId)
+      .withHttpMethod(method)
+      .withAuthorizationType("NONE")
+      .withRequestParameters(getMethodResult.getRequestParameters)
+
+    client.putMethod(request)
+  }
+
   def updateMethod(resourceId: ResourceId,
                    patchOperatios: (PatchPath, PatchValue)*) = Try {
-
-    lazy val generatePatch =
-      (path: PatchPath) =>
-        (value: PatchValue) =>
-          new PatchOperation()
-            .withOp(Op.Replace)
-            .withPath(path)
-            .withValue(value)
 
     val request = new UpdateMethodRequest()
       .withRestApiId(restApiId)
       .withResourceId(resourceId)
       .withHttpMethod(httpMethod)
-      .withPatchOperations(patchOperatios.map(g => generatePatch(g._1)(g._2)).asJava)
+      .withPatchOperations(patchOperatios.map(g => generatePatch(g._1)(g._2)(Op.Replace)).asJava)
 
     client.updateMethod(request)
   }
+
+  def enableCORS(resourceId: ResourceId) =
+    for {
+      methodOpt <- getMethod(resourceId, httpMethod)
+      optionsOpt <- getMethod(resourceId, "OPTIONS")
+      _ <- Try {
+        methodOpt foreach { method =>
+
+          // add header
+          method.getMethodResponses
+            .asScala
+            .values
+            .map { mr =>
+              updateMethodResponse(
+                resourceId = resourceId,
+                statusCode = mr.getStatusCode,
+                ("/responseParameters/method.response.header.Access-Control-Allow-Origin", "true", Op.Add)
+              ).get
+            }
+
+          // add options
+          if (optionsOpt.isEmpty) {
+            (for {
+              _ <- putMethod(resourceId, "OPTIONS", method)
+              _ <- putMethodResponse(resourceId, "OPTIONS", "200",
+                "method.response.header.Access-Control-Allow-Methods" -> false,
+                "method.response.header.Access-Control-Allow-Credentials" -> false,
+                "method.response.header.Access-Control-Allow-Origin" -> false,
+                "method.response.header.Access-Control-Allow-Headers" -> false
+              )
+            } yield ()).get
+          }
+
+          (for {
+            _ <- putIntegrationMock(resourceId, "OPTIONS")
+            _ <- putIntegrationResponse(
+              resourceId = resourceId,
+              method = "OPTIONS",
+              statusCode = "200",
+              selectionPattern = None,
+              responseParameters = Map(
+                "Access-Control-Allow-Methods" -> "'DELETE,GET,HEAD,PATCH,POST,PUT,OPTIONS'",
+                "Access-Control-Allow-Credentials" -> "'true'",
+                "Access-Control-Allow-Origin" -> "'*'",
+                "Access-Control-Allow-Headers" -> "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              ),
+              responseTemplates = Map.empty
+            )
+          } yield ()).get
+        }
+      }
+    } yield ()
 
   def deploy(awsAccountId: String,
              lambdaName: String,
              lambdaAlias: Option[String],
              requestTemplates: RequestTemplates,
              responseTemplates: ResponseTemplates,
-             withAuth: ResourceId => Try[Unit] = resourceId => Try()): Try[Option[Resource]] = {
+             withAuth: ResourceId => Try[Unit] = resourceId => Try(),
+             cors: Boolean = false): Try[Option[Resource]] = {
     val uri = Uri(regionName, awsAccountId, lambdaName, lambdaAlias)
     for {
       resource <- getResource
@@ -131,6 +255,13 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
           val resourceId = r.getId
           (for {
             _ <- putIntegration(resourceId, uri, requestTemplates)
+            _ <- Try {
+              if (cors) {
+                enableCORS(resourceId).get
+              } else {
+                Seq.empty
+              }
+            }
             _ <- putIntegrationResponses(resourceId, responseTemplates)
             _ <- withAuth(resourceId)
           } yield r).get
@@ -154,6 +285,15 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
       }
     } yield resourceOpt
   }
+
+  private lazy val generatePatch =
+    (path: PatchPath) =>
+      (value: PatchValue) =>
+        (op: Op) =>
+        new PatchOperation()
+          .withOp(op)
+          .withPath(path)
+          .withValue(value)
 
 }
 case class AWSApiGatewayMethods(regionName: String,

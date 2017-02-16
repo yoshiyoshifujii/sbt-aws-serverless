@@ -160,7 +160,7 @@ object AWSServerlessPlugin extends AutoPlugin {
           lambdaAlias = awsApiGatewayResourceUriLambdaAlias.?.value.map(a => s"$a$v"),
           requestTemplates = RequestTemplates(awsApiGatewayIntegrationRequestTemplates.value: _*),
           responseTemplates = awsApiGatewayIntegrationResponseTemplates.value,
-          withAuth(method)(AWSApiGatewayAuthorize(region, restApiId))(awsMethodAuthorizerName.?.value)
+          withAuth = withAuth(method)(AWSApiGatewayAuthorize(region, restApiId))(awsMethodAuthorizerName.?.value)
         )
 
       (for {
@@ -233,7 +233,7 @@ object AWSServerlessPlugin extends AutoPlugin {
         lambdaAlias = awsApiGatewayResourceUriLambdaAlias.?.value,
         requestTemplates = RequestTemplates(awsApiGatewayIntegrationRequestTemplates.value: _*),
         responseTemplates = awsApiGatewayIntegrationResponseTemplates.value,
-        withAuth(method)(AWSApiGatewayAuthorize(region, restApiId))(awsMethodAuthorizerName.?.value)
+        withAuth = withAuth(method)(AWSApiGatewayAuthorize(region, restApiId))(awsMethodAuthorizerName.?.value)
       ).get
     },
     listLambdaVersions := {

@@ -11,7 +11,7 @@ trait ServerlessKeys {
 
   lazy val deployList     = taskKey[Unit]("")
 
-  lazy val invoke         = taskKey[Unit]("")
+  lazy val invoke         = inputKey[Unit]("")
 
   lazy val logs           = taskKey[Unit]("")
 

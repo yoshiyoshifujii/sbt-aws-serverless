@@ -2,7 +2,7 @@ package serverless
 
 import com.github.yoshiyoshifujii.aws.apigateway.{ResponseTemplate, ResponseTemplates}
 
-case class Response(statusCodes: ResponseTemplates)
+case class Response(templates: ResponseTemplates)
 
 object Response {
 

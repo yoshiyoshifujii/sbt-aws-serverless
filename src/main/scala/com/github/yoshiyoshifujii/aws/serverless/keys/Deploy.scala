@@ -88,10 +88,11 @@ trait DeployBase extends DeployFunctionBase {
                     lambdaName = function.name,
                     lambdaAlias = Option(s"${httpEvent.uriLambdaAlias}${publishVersionResult.getVersion}"),
                     requestTemplates = RequestTemplates(httpEvent.request.templateToSeq: _*),
-                    responseTemplates = httpEvent.response.statusCodes,
-                    withAuth(method)(
+                    responseTemplates = httpEvent.response.templates,
+                    withAuth = withAuth(method)(
                       AWSApiGatewayAuthorize(so.provider.region, restApiId))(
-                      httpEvent.authorizer.map(_.name))
+                      httpEvent.authorizer.map(_.name)),
+                    cors = httpEvent.cors
                   )
                   _ = { resourceOpt.foreach(r => println(s"Resource: ${r.toString}")) }
                 } yield ()
