@@ -7,35 +7,6 @@ import scala.util.{Success, Try}
 
 package object keys {
 
-  private[keys] def deployAlias(lambda: AWSLambda,
-                                 functionName: FunctionName,
-                                 aliasName: String,
-                                 functionVersion: Option[String],
-                                 description: Option[String]) =
-    for {
-      aOp <- lambda.getAlias(functionName, aliasName)
-      res <- aOp map { _ =>
-        lambda.updateAlias(
-          functionName = functionName,
-          name = aliasName,
-          functionVersion = functionVersion,
-          description = description
-        ).map(_.getAliasArn)
-      } getOrElse {
-        for {
-          a <- lambda.createAlias(
-            functionName = functionName,
-            name = aliasName,
-            functionVersion = functionVersion,
-            description = description
-          )
-          _ <- lambda.addPermission(
-            functionArn = a.getAliasArn
-          )
-        } yield a.getAliasArn
-      }
-    } yield res
-
   private[keys] lazy val withAuth =
     (method: AWSApiGatewayMethods) =>
       (authorize: AWSApiGatewayAuthorize) =>

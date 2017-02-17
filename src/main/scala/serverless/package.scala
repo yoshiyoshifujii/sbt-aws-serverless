@@ -29,9 +29,13 @@ package object serverless {
 
   case class Functions(private val functions: Function*) {
 
-    def foreach[U](f: Function => U): Unit = functions.foreach(f)
+    private lazy val sortedFunctions = functions.sortWith {
+      (a, b) => {
+        a.events.hasAuthorizeEvent.compareTo(b.events.hasAuthorizeEvent) > 0
+      }
+    }
 
-    def map[B](f: Function => B) = functions.map(f)
+    def map[B](f: Function => B) = sortedFunctions.map(f)
 
     def find(functionName: String) = functions.find(f => f.name == functionName)
 

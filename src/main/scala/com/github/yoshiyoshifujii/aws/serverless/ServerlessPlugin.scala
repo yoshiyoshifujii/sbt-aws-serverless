@@ -18,6 +18,7 @@ object ServerlessPlugin extends AutoPlugin {
 
   lazy val serverlessSettings: Seq[Def.Setting[_]] = Seq(
     deploy := Serverless.deployTask(deploy).evaluated,
+    deployDev := Serverless.deployDevTask(deploy).evaluated,
     deployFunction := Serverless.deployFunctionTask(deploy).evaluated,
     deployList := Serverless.deployListTask(deploy).value,
     remove := Serverless.remove(deploy).value,

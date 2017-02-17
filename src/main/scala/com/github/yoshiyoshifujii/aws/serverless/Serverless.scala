@@ -25,6 +25,22 @@ object Serverless {
     }
   }
 
+  def deployDevTask(key: InputKey[Unit]): Initialize[InputTask[Unit]] = Def.inputTask {
+    (for {
+      stage <- spaceDelimited("<stage>").parsed match {
+        case Seq(a) => Some(a)
+        case _ => None
+      }
+      so = (serverlessOption in key).value
+      rootName = (name in key).value
+      rootDescription = (description in key).?.value
+      rootVersion = (version in key).?.value
+      _ = keys.DeployDev(so, rootName, rootDescription, rootVersion).invoke(stage).get
+    } yield ()).getOrElse {
+      sys.error("Error deploy. useage: deploy <stage>")
+    }
+  }
+
   def deployFunctionTask(key: InputKey[Unit]): Initialize[InputTask[Unit]] = Def.inputTask {
     (for {
       functionName <- spaceDelimited("<functionName>").parsed match {

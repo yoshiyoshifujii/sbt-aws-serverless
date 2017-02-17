@@ -27,12 +27,11 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     client.putIntegration(request)
   }
 
-  def putIntegrationMock(resourceId: ResourceId,
-                         method: HttpMethod) = Try {
+  def putIntegrationMock(resourceId: ResourceId) = Try {
     val request = new PutIntegrationRequest()
       .withRestApiId(restApiId)
       .withResourceId(resourceId)
-      .withHttpMethod(method)
+      .withHttpMethod(httpMethod)
       .withType(IntegrationType.MOCK)
       .withRequestTemplates(Map("application/json" -> """{\"statusCode\": 200}""").asJava)
       .withPassthroughBehavior("WHEN_NO_TEMPLATES")
@@ -59,7 +58,6 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
   }
 
   def putIntegrationResponse(resourceId: ResourceId,
-                             method: HttpMethod,
                              statusCode: StatusCode,
                              selectionPattern: Option[SelectionPattern],
                              responseParameters: Map[String, String],
@@ -67,7 +65,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     val request = new PutIntegrationResponseRequest()
       .withRestApiId(restApiId)
       .withResourceId(resourceId)
-      .withHttpMethod(method)
+      .withHttpMethod(httpMethod)
       .withStatusCode(statusCode)
     selectionPattern.foreach(request.setSelectionPattern)
 
@@ -98,7 +96,6 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     responseTemplates.values map { resT =>
       putIntegrationResponse(
         resourceId,
-        httpMethod,
         resT.statusCode,
         resT.selectionPattern,
         resT.parameters,
@@ -108,13 +105,12 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
   }
 
   def putMethodResponse(resourceId: ResourceId,
-                        method: HttpMethod,
                         statusCode: StatusCode,
                         responseParameters: (String, Boolean)*) = Try {
     val request = new PutMethodResponseRequest()
       .withRestApiId(restApiId)
       .withResourceId(resourceId)
-      .withHttpMethod(method)
+      .withHttpMethod(httpMethod)
       .withStatusCode(statusCode)
 
     responseParameters.foreach { case (k,v) =>
@@ -153,23 +149,21 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
       resources <- getResources(restApiId)
     } yield resources.getItems.find(_.getPath == path)
 
-  def getMethod(resourceId: ResourceId,
-                method: HttpMethod) = Try {
+  def getMethod(resourceId: ResourceId) = Try {
     val request = new GetMethodRequest()
       .withRestApiId(restApiId)
       .withResourceId(resourceId)
-      .withHttpMethod(method)
+      .withHttpMethod(httpMethod)
 
     toOpt(client.getMethod(request))
   }
 
   def putMethod(resourceId: ResourceId,
-                method: HttpMethod,
                 getMethodResult: GetMethodResult) = Try {
     val request = new PutMethodRequest()
       .withRestApiId(restApiId)
       .withResourceId(resourceId)
-      .withHttpMethod(method)
+      .withHttpMethod(httpMethod)
       .withAuthorizationType("NONE")
       .withRequestParameters(getMethodResult.getRequestParameters)
 
@@ -188,10 +182,15 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     client.updateMethod(request)
   }
 
-  def enableCORS(resourceId: ResourceId) =
+  def enableCORS(resourceId: ResourceId) = {
+    val om = AWSApiGatewayMethods(
+      regionName = this.regionName,
+      restApiId = this.restApiId,
+      path = this.path,
+      httpMethod = "OPTIONS")
     for {
-      methodOpt <- getMethod(resourceId, httpMethod)
-      optionsOpt <- getMethod(resourceId, "OPTIONS")
+      methodOpt <- getMethod(resourceId)
+      optionsOpt <- om.getMethod(resourceId)
       _ <- Try {
         methodOpt foreach { method =>
 
@@ -210,8 +209,8 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
           // add options
           if (optionsOpt.isEmpty) {
             (for {
-              _ <- putMethod(resourceId, "OPTIONS", method)
-              _ <- putMethodResponse(resourceId, "OPTIONS", "200",
+              _ <- om.putMethod(resourceId, method)
+              _ <- om.putMethodResponse(resourceId, "200",
                 "method.response.header.Access-Control-Allow-Methods" -> false,
                 "method.response.header.Access-Control-Allow-Credentials" -> false,
                 "method.response.header.Access-Control-Allow-Origin" -> false,
@@ -221,10 +220,9 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
           }
 
           (for {
-            _ <- putIntegrationMock(resourceId, "OPTIONS")
-            _ <- putIntegrationResponse(
+            _ <- om.putIntegrationMock(resourceId)
+            _ <- om.putIntegrationResponse(
               resourceId = resourceId,
-              method = "OPTIONS",
               statusCode = "200",
               selectionPattern = None,
               responseParameters = Map(
@@ -239,6 +237,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
         }
       }
     } yield ()
+  }
 
   def deploy(awsAccountId: String,
              lambdaName: String,
@@ -296,6 +295,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
           .withValue(value)
 
 }
+
 case class AWSApiGatewayMethods(regionName: String,
                                 restApiId: RestApiId,
                                 path: Path,
