@@ -61,6 +61,19 @@ object Serverless {
     keys.DeployList(so).invoke.get
   }
 
+  def invokeTask(key: InputKey[Unit]): Initialize[InputTask[Unit]] = Def.inputTask {
+    (for {
+      stage <- spaceDelimited("<stage>").parsed match {
+        case Seq(a) => Some(a)
+        case _ => None
+      }
+      so = (serverlessOption in key).value
+      _ = keys.Invoke(so).invoke(stage).get
+    } yield ()).getOrElse {
+      sys.error("Error invoke. useage: invoke <stage>")
+    }
+  }
+
   def remove(key: InputKey[Unit]): Initialize[Task[Unit]] = Def.task {
     val so = (serverlessOption in key).value
 

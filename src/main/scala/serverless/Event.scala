@@ -8,8 +8,24 @@ case class HttpEvent(path: String,
                      cors: Boolean = false,
                      `private`: Boolean = false,
                      authorizerName: Option[String] = None,
-                     request: Request = Request()) extends Event {
+                     request: Request = Request(),
+                     invokeInput: Option[HttpInvokeInput] = None) extends Event {
   lazy val response: Response = Response(cors)
+}
+
+object HttpEvent {
+  def apply(path: String,
+            method: String,
+            cors: Boolean,
+            authorizerName: String,
+            invokeInput: HttpInvokeInput): HttpEvent =
+    new HttpEvent(
+      path = path,
+      method = method,
+      cors = cors,
+      authorizerName = Option(authorizerName),
+      invokeInput = Option(invokeInput)
+    )
 }
 
 case class AuthorizeEvent(name: String,
@@ -40,7 +56,9 @@ case class Events(events: Event*) {
   def streamEventMap[B](f: StreamEvent => B): Seq[B] =
     streamEvents.map(e => f(e.asInstanceOf[StreamEvent]))
 
-  def hasAuthorizeEvent: Boolean = authorizeEvents.nonEmpty
+  lazy val hasHttpEvents: Boolean = httpEvents.nonEmpty
+
+  lazy val hasAuthorizeEvent: Boolean = authorizeEvents.nonEmpty
 
 }
 
