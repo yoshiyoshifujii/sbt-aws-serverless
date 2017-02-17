@@ -22,6 +22,7 @@ object ServerlessPlugin extends AutoPlugin {
     deployFunction := Serverless.deployFunctionTask(deploy).evaluated,
     deployList := Serverless.deployListTask(deploy).value,
     invoke := Serverless.invokeTask(deploy).evaluated,
+    information := Serverless.informationTask(deploy).value,
     remove := Serverless.remove(deploy).value,
 
     name in deploy := name.value,

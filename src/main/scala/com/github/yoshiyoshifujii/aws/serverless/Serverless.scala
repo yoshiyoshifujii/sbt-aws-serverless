@@ -74,6 +74,13 @@ object Serverless {
     }
   }
 
+  def informationTask(key: InputKey[Unit]): Initialize[Task[Unit]] = Def.task {
+    val so = (serverlessOption in key).value
+    val rootName = (name in key).value
+
+    keys.Information(so, rootName).invoke.get
+  }
+
   def remove(key: InputKey[Unit]): Initialize[Task[Unit]] = Def.task {
     val so = (serverlessOption in key).value
 
