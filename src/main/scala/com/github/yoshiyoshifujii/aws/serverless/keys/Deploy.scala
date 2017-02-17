@@ -2,7 +2,7 @@ package com.github.yoshiyoshifujii.aws.serverless.keys
 
 import com.amazonaws.services.apigateway.model.PutMode
 import com.github.yoshiyoshifujii.aws.apigateway.{AWSApiGatewayAuthorize, AWSApiGatewayMethods, RequestTemplates, RestApiId}
-import serverless.{AuthorizeEvent, Event, HttpEvent, ServerlessOption, Function => ServerlessFunction}
+import serverless.{AuthorizeEvent, HttpEvent, ServerlessOption, Function => ServerlessFunction}
 
 import scala.util.Try
 
@@ -11,7 +11,7 @@ trait DeployBase extends DeployFunctionBase {
   val description: Option[String]
   val version: Option[String]
 
-  protected def getOrCreateRestApi =
+  private def getOrCreateRestApi =
     for {
       restApiId <- {
         so.provider.restApiId map { id =>
@@ -26,7 +26,7 @@ trait DeployBase extends DeployFunctionBase {
       _ = { println(s"API Gateway created: $restApiId") }
     } yield restApiId
 
-  protected def putRestApi(restApiId: RestApiId) =
+  private def putRestApi(restApiId: RestApiId) =
     for {
       putRestApiResult <- api.put(
         restApiId = restApiId,
@@ -37,8 +37,8 @@ trait DeployBase extends DeployFunctionBase {
       _ = { println(s"API Gateway put: ${putRestApiResult.getId}") }
     } yield putRestApiResult
 
-  protected def createDeployment(restApiId: RestApiId,
-                                 stage: String) =
+  private def createDeployment(restApiId: RestApiId,
+                                     stage: String) =
     for {
       createDeploymentResult <- api.createDeployment(
         restApiId = restApiId,
@@ -59,10 +59,10 @@ trait DeployBase extends DeployFunctionBase {
       _ = { println(s"Lambda published: ${publishVersionResult.getFunctionArn}") }
     } yield publishVersionResult.getVersion
 
-  protected def deployAlias(function: ServerlessFunction,
-                            aliasName: String,
-                            functionVersion: Option[String],
-                            description: Option[String]) =
+  private def deployAlias(function: ServerlessFunction,
+                                aliasName: String,
+                                functionVersion: Option[String],
+                                description: Option[String]) =
     for {
       aOp <- lambda.getAlias(function.name, aliasName)
       aliasArn <- aOp map { _ =>
@@ -88,10 +88,10 @@ trait DeployBase extends DeployFunctionBase {
       _ = { println(s"Lambda Alias: $aliasArn") }
     } yield aliasArn
 
-  protected def deployResource(restApiId: RestApiId,
-                               function: ServerlessFunction,
-                               lambdaAlias: Option[String],
-                               httpEvent: HttpEvent) = {
+  private def deployResource(restApiId: RestApiId,
+                                   function: ServerlessFunction,
+                                   lambdaAlias: Option[String],
+                                   httpEvent: HttpEvent) = {
     val method = AWSApiGatewayMethods(
       regionName = so.provider.region,
       restApiId = restApiId,
@@ -114,9 +114,9 @@ trait DeployBase extends DeployFunctionBase {
     } yield ()
   }
 
-  protected def deployAuthorizer(restApiId: RestApiId,
-                                 lambdaAlias: Option[String],
-                                 authorizeEvent: AuthorizeEvent) = {
+  private def deployAuthorizer(restApiId: RestApiId,
+                                     lambdaAlias: Option[String],
+                                     authorizeEvent: AuthorizeEvent) = {
     lazy val authorize = AWSApiGatewayAuthorize(
       so.provider.region, restApiId
     )
@@ -134,9 +134,9 @@ trait DeployBase extends DeployFunctionBase {
     } yield ()
   }
 
-  protected def deployEvents(restApiId: RestApiId,
-                             function: ServerlessFunction,
-                             publishedVersion: String) =
+  private def deployEvents(restApiId: RestApiId,
+                                 function: ServerlessFunction,
+                                 publishedVersion: String) =
     for {
       _ <- sequence {
         function.events.httpEventsMap { httpEvent =>
@@ -159,8 +159,11 @@ trait DeployBase extends DeployFunctionBase {
       }
     } yield ()
 
-  protected def invokeFunctions(restApiId: RestApiId,
-                                stage: String) =
+  protected def generateFunctionVersion(publishedVersion: String) =
+    Option(publishedVersion)
+
+  private def invokeFunctions(restApiId: RestApiId,
+                              stage: String) =
     sequence {
       so.functions.map { function =>
         for {
@@ -169,7 +172,7 @@ trait DeployBase extends DeployFunctionBase {
           _ <- deployAlias(
             function = function,
             aliasName = s"$stage$publishedVersion",
-            functionVersion = Option(publishedVersion),
+            functionVersion = generateFunctionVersion(publishedVersion),
             description = version
           )
           _ <- deployEvents(
