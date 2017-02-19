@@ -10,7 +10,6 @@ object ServerlessPlugin extends AutoPlugin {
   }
 
   import autoImport._
-  import sbtassembly.AssemblyPlugin.autoImport._
 
   override def requires = sbtassembly.AssemblyPlugin
 
@@ -20,7 +19,7 @@ object ServerlessPlugin extends AutoPlugin {
     deploy := Serverless.deployTask(deploy).evaluated,
     deployDev := Serverless.deployDevTask(deploy).evaluated,
     deployFunction := Serverless.deployFunctionTask(deploy).evaluated,
-    deployList := Serverless.deployListTask(deploy).value,
+    deployList := Serverless.deployListTask(deploy).evaluated,
     invoke := Serverless.invokeTask(deploy).evaluated,
     information := Serverless.informationTask(deploy).value,
     remove := Serverless.remove(deploy).value,
@@ -28,7 +27,6 @@ object ServerlessPlugin extends AutoPlugin {
     name in deploy := name.value,
     description in deploy := description.value,
     version in deploy := version.value,
-    assemblyOutputPath in deploy := (assemblyOutputPath in assembly).value,
     serverlessOption in deploy := serverlessOption.value
   )
 }

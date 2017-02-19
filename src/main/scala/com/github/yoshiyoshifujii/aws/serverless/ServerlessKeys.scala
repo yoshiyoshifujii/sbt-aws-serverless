@@ -11,7 +11,7 @@ trait ServerlessKeys {
 
   lazy val deployFunction = inputKey[Unit]("The deployFunc task deploys the AWS Lambda Function.")
 
-  lazy val deployList     = taskKey[Unit]("The deployList task will list your recent deployments.")
+  lazy val deployList     = inputKey[Unit]("The deployList task will list your recent deployments.")
 
   lazy val invoke         = inputKey[Unit]("Invokes deployed function.")
 

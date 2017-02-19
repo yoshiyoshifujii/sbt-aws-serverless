@@ -2,7 +2,8 @@ package com.github.yoshiyoshifujii.aws.serverless.keys
 
 import com.amazonaws.services.apigateway.model.PutMode
 import com.github.yoshiyoshifujii.aws.apigateway.{AWSApiGatewayAuthorize, AWSApiGatewayMethods, RequestTemplates, RestApiId}
-import serverless.{AuthorizeEvent, HttpEvent, ServerlessOption, Function => ServerlessFunction}
+import com.github.yoshiyoshifujii.aws.kinesis
+import serverless.{AuthorizeEvent, HttpEvent, ServerlessOption, StreamEvent, Function => ServerlessFunction}
 
 import scala.util.Try
 
@@ -86,7 +87,40 @@ trait DeployBase extends DeployFunctionBase {
         } yield a.getAliasArn
       }
       _ = { println(s"Lambda Alias: $aliasArn") }
-    } yield aliasArn
+    } yield ()
+
+  private def deployAlias(stage: String,
+                          function: ServerlessFunction,
+                          publishedVersion: PublishedVersion): Try[Unit] =
+    Seq(
+      function.events.ifHasHttpEventDo {
+        () => deployAlias(
+          function = function,
+          aliasName = generateLambdaAlias(stage, publishedVersion),
+          functionVersion = generateFunctionVersion(publishedVersion),
+          description = version
+        )
+      },
+      function.events.ifHasAuthorizeEventDo {
+        () => deployAlias(
+          function = function,
+          aliasName = stage,
+          functionVersion = generateFunctionVersion(publishedVersion),
+          description = version
+        )
+      },
+      function.events.ifHasStreamEventDo {
+        () => deployAlias(
+          function = function,
+          aliasName = stage,
+          functionVersion = generateFunctionVersion(publishedVersion),
+          description = version
+        )
+      }
+    ).flatten
+      .foldLeft(Try())(
+        (c, d) => c.flatMap(_ => d())
+      )
 
   private def deployResource(restApiId: RestApiId,
                              function: ServerlessFunction,
@@ -134,12 +168,37 @@ trait DeployBase extends DeployFunctionBase {
     } yield ()
   }
 
+  private def deployStream(stage: String,
+                         function: ServerlessFunction,
+                         streamEvent: StreamEvent) = {
+    val functionArn = lambda.generateLambdaArn(so.provider.awsAccount)(function.name)(Some(stage))
+
+    for {
+      _ <- lambda.deleteEventSourceMappings(functionArn)
+      c <- {
+        val eventSourceArn =
+          kinesis.generateKinesisStreamArn(
+            so.provider.region)(
+            so.provider.awsAccount)(
+            streamEvent.appendToTheNameSuffix(stage))
+        lambda.createEventSourceMapping(
+          functionArn = functionArn,
+          eventSourceArn = eventSourceArn,
+          batchSize = streamEvent.batchSize,
+          startPosition = streamEvent.startingPosition.value
+        )
+      }
+      _ = { println(s"Event Source Mapping: ${c.toString}") }
+    } yield c
+  }
+
   private[keys] type PublishedVersion = Option[String]
 
   private def generateLambdaAlias(prefix: String, publishedVersion: PublishedVersion) =
     publishedVersion.map(p => s"${prefix}_$p").getOrElse(prefix)
 
   private def deployEvents(restApiId: RestApiId,
+                           stage: String,
                            function: ServerlessFunction,
                            publishedVersion: PublishedVersion) =
     for {
@@ -154,11 +213,20 @@ trait DeployBase extends DeployFunctionBase {
         }
       }
       _ <- sequence {
-        function.events.authorizeEventMap { authorizeEvent =>
+        function.events.authorizeEventsMap { authorizeEvent =>
           deployAuthorizer(
             restApiId = restApiId,
-            lambdaAlias = Option(generateLambdaAlias(authorizeEvent.uriLambdaAlias, publishedVersion)),
+            lambdaAlias = Option(authorizeEvent.uriLambdaAlias),
             authorizeEvent = authorizeEvent
+          )
+        }
+      }
+      _ <- sequence {
+        function.events.streamEventsMap { streamEvent =>
+          deployStream(
+            stage = stage,
+            function = function,
+            streamEvent = streamEvent
           )
         }
       }
@@ -175,13 +243,13 @@ trait DeployBase extends DeployFunctionBase {
           _ <- invoke(function)
           publishedVersion <- publishVersion(function)
           _ <- deployAlias(
+            stage = stage,
             function = function,
-            aliasName = generateLambdaAlias(stage, publishedVersion),
-            functionVersion = generateFunctionVersion(publishedVersion),
-            description = version
+            publishedVersion = publishedVersion
           )
           _ <- deployEvents(
             restApiId = restApiId,
+            stage = stage,
             function = function,
             publishedVersion = publishedVersion
           )

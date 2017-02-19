@@ -1,5 +1,7 @@
 package serverless
 
+import com.amazonaws.services.lambda.model.EventSourcePosition
+
 trait Event
 
 case class HttpEvent(path: String,
@@ -34,32 +36,53 @@ case class AuthorizeEvent(name: String,
                           identitySourceHeaderName: String = "Authorization",
                           identityValidationExpression: Option[String] = None) extends Event
 
-case class StreamEvent(arn: String,
+case class StreamEvent(name: String,
                        batchSize: Int = 100,
-                       startingPosition: String,
-                       enabled: Boolean = false) extends Event
+                       startingPosition: StartingPosition = StartingPosition.TRIM_HORIZON,
+                       enabled: Boolean = true) extends Event {
+
+  def appendToTheNameSuffix(stage: String) = s"$name-$stage"
+}
+
+sealed abstract class StartingPosition(val value: EventSourcePosition)
+
+object StartingPosition {
+  case object TRIM_HORIZON extends StartingPosition(EventSourcePosition.TRIM_HORIZON)
+  case object LATEST extends StartingPosition(EventSourcePosition.LATEST)
+  case object AT_TIMESTAMP extends StartingPosition(EventSourcePosition.AT_TIMESTAMP)
+}
 
 case class Events(events: Event*) {
 
-  private lazy val httpEvents = events.filter(_.isInstanceOf[HttpEvent])
+  lazy val httpEvents: Seq[HttpEvent] =
+    events.filter(_.isInstanceOf[HttpEvent])
+      .map(_.asInstanceOf[HttpEvent])
 
-  def httpEventsMap[B](f: HttpEvent => B): Seq[B] =
-    httpEvents.map(e => f(e.asInstanceOf[HttpEvent]))
+  def httpEventsMap[B](f: HttpEvent => B): Seq[B] = httpEvents map f
 
-  private lazy val authorizeEvents = events.filter(_.isInstanceOf[AuthorizeEvent])
+  lazy val authorizeEvents: Seq[AuthorizeEvent] =
+    events.filter(_.isInstanceOf[AuthorizeEvent])
+      .map(_.asInstanceOf[AuthorizeEvent])
 
-  def authorizeEventMap[B](f: AuthorizeEvent => B): Seq[B] =
-    authorizeEvents.map(e => f(e.asInstanceOf[AuthorizeEvent]))
+  def authorizeEventsMap[B](f: AuthorizeEvent => B): Seq[B] = authorizeEvents map f
 
-  private lazy val streamEvents = events.filter(_.isInstanceOf[StreamEvent])
+  lazy val streamEvents: Seq[StreamEvent] =
+    events.filter(_.isInstanceOf[StreamEvent])
+      .map(_.asInstanceOf[StreamEvent])
 
-  def streamEventMap[B](f: StreamEvent => B): Seq[B] =
-    streamEvents.map(e => f(e.asInstanceOf[StreamEvent]))
+  def streamEventsMap[B](f: StreamEvent => B): Seq[B] = streamEvents map f
 
-  lazy val hasHttpEvents: Boolean = httpEvents.nonEmpty
+  lazy val hasHttpEvent: Boolean = httpEvents.nonEmpty
 
   lazy val hasAuthorizeEvent: Boolean = authorizeEvents.nonEmpty
 
+  lazy val hasStreamEvent: Boolean = streamEvents.nonEmpty
+
+  def ifHasHttpEventDo[A](f: () => A): Option[() => A] = if (hasHttpEvent) Some(f) else None
+
+  def ifHasAuthorizeEventDo[A](f: () => A): Option[() => A] = if (hasAuthorizeEvent) Some(f) else None
+
+  def ifHasStreamEventDo[A](f: () => A): Option[() => A] = if (hasStreamEvent) Some(f) else None
 }
 
 object Events {

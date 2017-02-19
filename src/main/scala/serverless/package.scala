@@ -39,8 +39,9 @@ package object serverless {
 
     def find(functionName: String) = functions.find(f => f.name == functionName)
 
-    lazy val filteredHttpEvents = functions.filter(_.events.hasHttpEvents)
+    lazy val filteredHttpEvents = functions.filter(_.events.hasHttpEvent)
 
+    lazy val filteredStreamEvents = functions.filter(_.events.hasStreamEvent)
   }
 
   case class ServerlessOption(provider: Provider,

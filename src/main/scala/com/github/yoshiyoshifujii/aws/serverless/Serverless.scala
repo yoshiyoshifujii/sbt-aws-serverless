@@ -3,6 +3,7 @@ package com.github.yoshiyoshifujii.aws.serverless
 import sbt._
 import Keys._
 import Def.Initialize
+import com.github.yoshiyoshifujii.aws
 import complete.DefaultParsers._
 
 object Serverless {
@@ -55,10 +56,17 @@ object Serverless {
     }
   }
 
-  def deployListTask(key: InputKey[Unit]): Initialize[Task[Unit]] = Def.task {
-    val so = (serverlessOption in key).value
-
-    keys.DeployList(so).invoke.get
+  def deployListTask(key: InputKey[Unit]): Initialize[InputTask[Unit]] = Def.inputTask {
+    (for {
+      stage <- spaceDelimited("<stage>").parsed match {
+        case Seq(a) => Some(a)
+        case _ => None
+      }
+      so = (serverlessOption in key).value
+      _ = keys.DeployList(so).invoke(stage).get
+    } yield ()).getOrElse {
+      sys.error("Error deployList. useage: deployList <stage>")
+    }
   }
 
   def invokeTask(key: InputKey[Unit]): Initialize[InputTask[Unit]] = Def.inputTask {
@@ -84,7 +92,9 @@ object Serverless {
   def remove(key: InputKey[Unit]): Initialize[Task[Unit]] = Def.task {
     val so = (serverlessOption in key).value
 
-    keys.Remove(so).invoke.get
+    aws.? {
+      keys.Remove(so).invoke.get
+    }
   }
 
 }
