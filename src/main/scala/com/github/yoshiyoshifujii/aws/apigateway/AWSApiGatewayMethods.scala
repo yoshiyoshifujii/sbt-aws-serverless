@@ -33,7 +33,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
       .withResourceId(resourceId)
       .withHttpMethod(httpMethod)
       .withType(IntegrationType.MOCK)
-      .withRequestTemplates(Map("application/json" -> """{\"statusCode\": 200}""").asJava)
+      .withRequestTemplates(Map("application/json" -> """{"statusCode": 200}""").asJava)
       .withPassthroughBehavior("WHEN_NO_TEMPLATES")
 
     client.putIntegration(request)
