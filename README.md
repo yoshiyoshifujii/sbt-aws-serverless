@@ -7,120 +7,106 @@ sbt plugin to deploy code to Amazon API Gateway and AWS Lambda
 Add the following to your `project/plugins.sbt` file:
 
 ```sbt
-addSbtPlugin("com.github.yoshiyoshifujii" % "sbt-aws-serverless" % "1.8.0")
+addSbtPlugin("com.github.yoshiyoshifujii" % "sbt-aws-serverless" % "2.0.0")
 ```
 
-Add the `AWSApiGatewayPlugin` auto-plugin to your build.sbt:
+Add the `ServerlessPlugin` auto-plugin to your build.sbt:
 
 ```sbt
-enablePlugins(AWSApiGatewayPlugin)
-```
-
-Add the `AWSServerlessPlugin` auto-plugin to your build.sbt:
-
-```sbt
-enablePlugins(AWSServerlessPlugin)
-```
-
-Add the `AWSCustomAuthorizerPlugin` auto-plugin to your build.sbt:
-
-```sbt
-enablePlugins(AWSCustomAuthorizerPlugin)
-```
-
-Add the `AWSLambdaTriggerKinesisStreamPlugin` auto-plugin to your build.sbt:
-
-```sbt
-enablePlugins(AWSLambdaTriggerKinesisStreamPlugin)
+enablePlugins(ServerlessPlugin)
 ```
 
 ## Usage
 
-`sbt createApiGateway [name]` creates a new Amazon API Gateway Rest API.
+`sbt deploy <stage>` deploys the entire service.
 
-`sbt putApiGateway` put a swagger.yaml to Amazon API Gateway Rest API.
+`sbt deployDev <stage>` Deploy the deployDev task in development mode.
 
-`sbt deploy` deploy AWS Lambda function from the current project.
+`sbt deployFunction <functionName>` The deployFunc task deploys the AWS Lambda Function.
 
-`sbt "createDeployment test"` deploy the Amazon API Gateway Stages.
+`sbt deployList <stage>` The deployList task will list your recent deployments.
 
-`sbt "testMethod test"` test to deploy stage.
+`sbt invoke <stage>` Invokes deployed function.
 
-`sbt "syncEventSourceMappings test" to create or update Event Source Mappings.
+`sbt information` Displays information about the deployed service.
+
+`sbt remove <stage>` The remove task will remove the deployed service.
 
 ## Configuration
 
-### AWSApiGatewayPlugin
+```sbt
+serverlessOption := {
+  ServerlessOption(
+    Provider(
+      awsAccount: String,
+      region: String = "us-east-1",
+      deploymentBucket: String,
+      swagger: File,
+      restApiId: Option[String] = None,
+      stageVariables: Option[Map[String, String]] = Some(Map(
+        "env" -> stage,
+        "region" -> region
+      ))
+    ),
+    Functions(
+      Function(
+        filePath: File,
+        name: String,
+        description: Option[String] = None,
+        handler: String,
+        memorySize: Int = 512,
+        timeout: Int = 10,
+        role: String,
+        environment: Map[String, String] = Map.empty,
+        events: Events = Events(
+          HttpEvent(
+            path: String,
+            method: String,
+            uriLambdaAlias: String = "${stageVariables.env}",
+            cors: Boolean = false,
+            `private`: Boolean = false,
+            authorizerName: Option[String] = None,
+            request: Request = Request(),
+            invokeInput: Option[HttpInvokeInput] = None
+          ),
+          AuthorizeEvent(
+            name: String,
+            uriLambdaAlias: String = "${stageVariables.env}",
+            resultTtlInSeconds: Int = 1800,
+            identitySourceHeaderName: String = "Authorization",
+            identityValidationExpression: Option[String] = None
+          ),
+          StreamEvent(
+            name: String,
+            batchSize: Int = 100,
+            startingPosition: StartingPosition = StartingPosition.TRIM_HORIZON,
+            enabled: Boolean = true
+          )
+        )
+      )
+    )
+  )
+}
+```
 
-| sbt setting                   | Description                                               |
-|-------------------------------|-----------------------------------------------------------|
-| awsRegion                     | Amazon API Gateway and AWS Lambda region.                 |
-| awsAccountId                  | Amazon Account ID.                                        |
-| awsApiGatewayRestApiId        | The identifier of the RestApi to be updated.              |
-| awsApiGatewayYAMLFile         | The PUT request body containing external API definitions. |
-| awsApiGatewayStages           | Stage name and stage's description.                       |
-| awsApiGatewayStageVariables   | A map that defines the stage variables.                   |
-
-### AWSServerlessPlugin
-
-| sbt setting                               | Description                                                                 |
-|-------------------------------------------|-----------------------------------------------------------------------------|
-| awsLambdaFunctionName                     | The name you want to assign to the function you are uploading.              |
-| awsLambdaDescription                      | A short, user-defined function description.                                 |
-| awsLambdaHandler                          | The function within your code that Lambda calls to begin execution.         |
-| awsLambdaRole                             | The Amazon Resource Name (ARN) of the IAM role.                             |
-| awsLambdaTimeout                          | The function execution time at which Lambda should terminate the function.  |
-| awsLambdaMemorySize                       | The amount of memory, in MB, your Lambda function is given.                 |
-| awsLambdaEnvironment                      | You can define Environment Variables as key/value pairs that are accessible from your function code. |
-| awsLambdaS3Bucket                         | The name of an S3 bucket where the lambda code will be stored.              |
-| awsLambdaDeployDescription                | The description for the version you are publishing.                         |
-| awsLambdaAliasNames                       | Name for the alias you are creating.                                        |
-| awsApiGatewayResourcePath                 | The full path for this resource.                                            |
-| awsApiGatewayResourceHttpMethod           | Specifies a put integration request's HTTP method.                          |
-| awsApiGatewayResourceUriLambdaAlias       | Specifies a put integration input's Uniform Resource Identifier (URI).      |
-| awsApiGatewayIntegrationRequestTemplates  | Represents a map of Velocity templates.                                     |
-| awsApiGatewayIntegrationResponseTemplates | Specifies a put integration response's templates.                           |
-| awsMethodAuthorizerName                   | The name of the authorizer.                                                 |
-| awsTestHeaders                            | A key-value map of headers to simulate an incoming invocation request.      |
-| awsTestParameters                         | A key-value map of parameters to simulate an incoming invocation request.   |
-| awsTestPathWithQuerys                     | The URI path, including query string.                                       |
-| awsTestBody                               | The simulated request body of an incoming invocation request.               |
-| awsTestSuccessStatusCode                  | The HTTP status code of success.                                            |
-
-
-### AWSCustomAuthorizerPlugin
-
-| sbt setting                               | Description                                                                 |
-|-------------------------------------------|-----------------------------------------------------------------------------|
-| awsAuthorizerName                         | The name of the authorizer.                                                 |
-| awsIdentitySourceHeaderName               | The source of the identity in an incoming request.                          |
-| awsIdentityValidationExpression           | A validation expression for the incoming identity.                          |
-| awsAuthorizerResultTtlInSeconds           | The TTL of cached authorizer results.                                       |
-
-
-### AWSLambdaTriggerKinesisStreamPlugin
-
-| sbt setting                               | Description                                                                 |
-|-------------------------------------------|-----------------------------------------------------------------------------|
-| eventSourceNames                          | The name of the Event Source Names.                                         |
-
+## build.sbt
 
 An example configuration might look like this:
 
 ```sbt
-import com.github.yoshiyoshifujii.aws.apigateway._
+import Dependencies._
+import serverless._
 
-lazy val regionName = sys.props.getOrElse("AWS_REGION", "")
 lazy val accountId = sys.props.getOrElse("AWS_ACCOUNT_ID", "")
-lazy val restApiId = sys.props.getOrElse("AWS_REST_API_ID", "")
 lazy val roleArn = sys.props.getOrElse("AWS_ROLE_ARN", "")
 lazy val bucketName = sys.props.getOrElse("AWS_BUCKET_NAME", "")
 lazy val authKey = sys.props.getOrElse("AUTH_KEY", "")
 
 val commonSettings = Seq(
-  version := "0.1",
-  scalaVersion := "2.11.8",
-  organization := "com.github.yoshiyoshifujii.sample-serverless"
+  version := "$version$",
+  scalaVersion := "2.12.1",
+  organization := "$organization$",
+  libraryDependencies ++= rootDeps
 )
 
 val assemblySettings = Seq(
@@ -130,109 +116,164 @@ val assemblySettings = Seq(
       val oldStrategy = (assemblyMergeStrategy in assembly).value
       oldStrategy(x)
   },
-  assemblyJarName in assembly := s"${name.value}-${version.value}.jar",
+  assemblyJarName in assembly := s"\${name.value}-\${version.value}.jar",
   publishArtifact in (Compile, packageBin) := false,
   publishArtifact in (Compile, packageSrc) := false,
   publishArtifact in (Compile, packageDoc) := false
 )
 
-val awsSettings = Seq(
-  awsRegion := regionName,
-  awsAccountId := accountId
-)
-
-val apiGatewaySettings = awsSettings ++ Seq(
-  awsApiGatewayRestApiId := restApiId,
-  awsApiGatewayYAMLFile := file("./swagger.yaml"),
-  awsApiGatewayResourceUriLambdaAlias := "${stageVariables.env}",
-  awsApiGatewayStages := Seq(
-    "dev" -> Some("development stage"),
-    "test" -> Some("test stage"),
-    "v1" -> Some("v1 stage")
-  ),
-  awsApiGatewayStageVariables := Map(
-    "dev" -> Map("env" -> "dev", "region" -> regionName),
-    "test" -> Map("env" -> "test", "region" -> regionName),
-    "v1" -> Map("env" -> "production", "region" -> regionName)
-  )
-)
-
-val lambdaSettings = apiGatewaySettings ++ Seq(
-  awsLambdaFunctionName := s"${name.value}",
-  awsLambdaDescription := "sample-serverless",
-  awsLambdaRole := roleArn,
-  awsLambdaTimeout := 15,
-  awsLambdaMemorySize := 1536,
-  awsLambdaEnvironment := Map("HOGE" -> "FUGA"),
-  awsLambdaS3Bucket := bucketName,
-  awsLambdaDeployDescription := s"${version.value}",
-  awsLambdaAliasNames := Seq(
-    "test", "production"
-  )
-)
-
 lazy val root = (project in file(".")).
-  enablePlugins(AWSApiGatewayPlugin).
-  aggregate(hello).
+  enablePlugins(ServerlessPlugin).
+  aggregate(auth, appHello, appAccountModified).
   settings(commonSettings: _*).
-  settings(apiGatewaySettings: _*)
-
-lazy val hello = (project in file("./modules/hello")).
-  enablePlugins(AWSServerlessPlugin).
-  settings(commonSettings: _*).
-  settings(assemblySettings: _*).
-  settings(lambdaSettings: _*).
   settings(
-    name := "SampleHello",
-    libraryDependencies ++= Seq(
-      "com.amazonaws" % "aws-lambda-java-core" % "1.1.0",
-      "io.spray" %%  "spray-json" % "1.3.2"
-    ),
-    awsLambdaHandler := "com.example.Hello::handleRequest",
-    awsApiGatewayResourcePath := "/hellos",
-    awsApiGatewayResourceHttpMethod := "GET",
-    awsApiGatewayIntegrationRequestTemplates := Seq(
-      "application/json" ->
-        """{"stage":{"env":"$stageVariables.env","region":"$stageVariables.region"},"body":$input.json('$')}"""
-    ),
-    awsApiGatewayIntegrationResponseTemplates := ResponseTemplates(
-      ResponseTemplate("200", None)
-    ),
-    awsMethodAuthorizerName := "SampleAuth",
-    awsTestHeaders := Seq("Authorization" -> authKey),
-    awsTestSuccessStatusCode := 200
+    name := "$name$",
+    serverlessOption := {
+      ServerlessOption(
+        Provider(
+          awsAccount = accountId,
+          deploymentBucket = bucketName,
+          swagger = file("./swagger.yaml"),
+          restApiId = None
+        ),
+        Functions(
+          Function(
+            filePath = (assembly in auth).value,
+            name = (name in auth).value,
+            handler = "$package$.Auth::handleRequest",
+            role = roleArn,
+            events = Events(
+              AuthorizeEvent(
+                name = (name in auth).value
+              )
+            )
+          ),
+          Function(
+            filePath = (assembly in appHello).value,
+            name = (name in appHello).value,
+            handler = "$package$.application.hello.App::handleRequest",
+            role = roleArn,
+            events = Events(
+              HttpEvent(
+                path = "/hellos",
+                method = "GET",
+                cors = true,
+                authorizerName = (name in auth).value,
+                invokeInput = HttpInvokeInput(
+                  headers = Seq("Authorization" -> authKey)
+                )
+              )
+            )
+          ),
+          Function(
+            filePath = (assembly in appAccountModified).value,
+            name = (name in appAccountModified).value,
+            handler = "$package$.application.accountmodified.App::recordHandler",
+            role = roleArn
+          )
+        )
+      )
+    }
+  )
+
+lazy val domain = (project in file("./modules/domain")).
+  settings(commonSettings: _*).
+  settings(
+    name := "$name$-domain",
+    libraryDependencies ++= domainDeps
+  )
+
+lazy val infraLambda = (project in file("./modules/infrastructure/lambda")).
+  settings(commonSettings: _*).
+  settings(
+    name := "$name$-infrastructure-lambda",
+    libraryDependencies ++= infraLambdaDeps
+  )
+
+lazy val infraLambdaConsumer = (project in file("./modules/infrastructure/lambdaconsumer")).
+  settings(commonSettings: _*).
+  settings(
+    name := "$name$-infrastructure-lambda-consumer",
+    libraryDependencies ++= infraLambdaConsumerDeps
+  )
+
+lazy val infraDomain = (project in file("./modules/infrastructure/domain")).
+  dependsOn(domain).
+  settings(commonSettings: _*).
+  settings(
+    name := "$name$-infrastructure-domain",
+    libraryDependencies ++= infraDomainDeps
+  )
+
+lazy val infraDynamo = (project in file("./modules/infrastructure/dynamodb")).
+  dependsOn(infraDomain).
+  settings(commonSettings: _*).
+  settings(
+    name := "$name$-infrastructure-dynamodb",
+    libraryDependencies ++= infraDynamoDeps
+  )
+
+lazy val infraS3 = (project in file("./modules/infrastructure/s3")).
+  dependsOn(infraDomain).
+  settings(commonSettings: _*).
+  settings(
+    name := "$name$-infrastructure-s3",
+    libraryDependencies ++= infraS3Deps
+  )
+
+lazy val infraKinesis = (project in file("./modules/infrastructure/kinesis")).
+  dependsOn(infraDomain).
+  settings(commonSettings: _*).
+  settings(
+    name := "$name$-infrastructure-kinesis",
+    libraryDependencies ++= infraKinesisDeps
+  )
+
+lazy val infraElasticSearch = (project in file("./modules/infrastructure/elasticsearch")).
+  dependsOn(infraDomain).
+  settings(commonSettings: _*).
+  settings(
+    name := "$name$-infrastructure-elasticsearch",
+    libraryDependencies ++= infraElasticSearchDeps
   )
 
 lazy val auth = (project in file("./modules/auth")).
-  enablePlugins(AWSCustomAuthorizerPlugin).
   settings(commonSettings: _*).
   settings(assemblySettings: _*).
-  settings(lambdaSettings: _*).
   settings(
-    name := "SampleAuth",
-    libraryDependencies ++= Seq(
-      "com.amazonaws" % "aws-lambda-java-core" % "1.1.0",
-      "io.spray" %%  "spray-json" % "1.3.2"
-    ),
-    awsLambdaHandler := "com.example.Auth::handleRequest",
-    awsAuthorizerName := "SampleAuth",
-    awsIdentitySourceHeaderName := "Authorization",
-    awsAuthorizerResultTtlInSeconds := 3000
+    name := "$name$-auth",
+    libraryDependencies ++= authDeps
+  )
+
+lazy val appHello = (project in file("./modules/application/hello")).
+  dependsOn(infraLambda, infraDynamo, infraS3, infraKinesis).
+  settings(commonSettings: _*).
+  settings(assemblySettings: _*).
+  settings(
+    name := "$name$-app-hello",
+    libraryDependencies ++= appHelloDeps
+  )
+
+lazy val appAccountModified = (project in file("./modules/application/accountmodified")).
+  dependsOn(infraLambdaConsumer, infraDomain).
+  settings(commonSettings: _*).
+  settings(assemblySettings: _*).
+  settings(
+    name := "$name$-app-account-modified",
+    libraryDependencies ++= appAccountModifiedDeps
   )
 ```
 
 An example command might look like this:
 
 ```sh
-sbt -DAWS_REGION=<Region Name> \
-    -DAWS_ACCOUNT_ID=<AWS Account ID> \
-    -DAWS_REST_API_ID=<Rest Api Id> \
+sbt -DAWS_ACCOUNT_ID=<AWS Account ID> \
     -DAWS_ROLE_ARN=arn:aws:iam::<AWS Account ID>:role/<Role Name> \
     -DAWS_BUCKET_NAME=<Bucket Name> \
     -DAUTH_KEY=hoge
 ```
 
-## Sample
+## Giter8
 
-https://github.com/yoshiyoshifujii/sample-serverless
+https://github.com/yoshiyoshifujii/sbt-aws-serverless-ddd.g8
 
