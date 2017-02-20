@@ -301,12 +301,14 @@ trait AWSLambdaWrapper extends AWSWrapper {
     }
 
   def createEventSourceMapping(functionArn: FunctionArn,
-                               eventSourceArn: EventSourceArn) = Try {
+                               eventSourceArn: EventSourceArn,
+                               batchSize: Int = 100,
+                               startPosition: EventSourcePosition = EventSourcePosition.TRIM_HORIZON) = Try {
     val request = new CreateEventSourceMappingRequest()
       .withFunctionName(functionArn)
       .withEventSourceArn(eventSourceArn)
-      .withBatchSize(100)
-      .withStartingPosition(EventSourcePosition.TRIM_HORIZON)
+      .withBatchSize(batchSize)
+      .withStartingPosition(startPosition)
 
     client.createEventSourceMapping(request)
   }
