@@ -9,9 +9,3 @@ lazy val root = (project in file(".")).
     libraryDependencies ++= rootDeps
   )
 
-lazy val sampleLambda = (project in file("./sample/lambda")).
-  settings(
-    name := "sampleScalaLambda",
-    libraryDependencies ++= sampleLambdaDeps
-  )
-

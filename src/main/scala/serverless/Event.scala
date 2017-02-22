@@ -6,7 +6,7 @@ trait Event
 
 case class HttpEvent(path: String,
                      method: String,
-                     uriLambdaAlias: String = "${stageVariables.env}",
+                     uriLambdaAlias: Option[String] = Some("${stageVariables.env}"),
                      cors: Boolean = false,
                      `private`: Boolean = false,
                      authorizerName: Option[String] = None,
@@ -31,7 +31,7 @@ object HttpEvent {
 }
 
 case class AuthorizeEvent(name: String,
-                          uriLambdaAlias: String = "${stageVariables.env}",
+                          uriLambdaAlias: Option[String] = Some("${stageVariables.env}"),
                           resultTtlInSeconds: Int = 1800,
                           identitySourceHeaderName: String = "Authorization",
                           identityValidationExpression: Option[String] = None) extends Event

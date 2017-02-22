@@ -11,9 +11,6 @@ object Dependencies {
 
   val scalaTest = "org.scalatest" %% "scalatest" % "2.2.4"
 
-  // Amazon Lambda
-  val awsLambdaJavaCore = "com.amazonaws" % "aws-lambda-java-core" % "1.1.0"
-
   // Typesafe Config
   val config = "com.typesafe" % "config" % "1.3.0"
 
@@ -24,10 +21,6 @@ object Dependencies {
     awsJavaSdkKinesis,
     config % Test,
     scalaTest % Test
-  )
-
-  lazy val sampleLambdaDeps = Seq(
-    awsLambdaJavaCore
   )
 
 }
