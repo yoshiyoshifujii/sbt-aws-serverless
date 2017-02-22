@@ -94,11 +94,26 @@ object Serverless {
     keys.Information(so, rootName).invoke.get
   }
 
-  def remove(key: InputKey[Unit]): Initialize[Task[Unit]] = Def.task {
+  def removeTask(key: InputKey[Unit]): Initialize[Task[Unit]] = Def.task {
     val so = (serverlessOption in key).value
 
     aws.? {
       keys.Remove(so).invoke.get
+    }
+  }
+
+  def removeDeploymentTask(key: InputKey[Unit]): Initialize[InputTask[Unit]] = Def.inputTask {
+    (for {
+      deploymentId <- spaceDelimited("<deploymentId>").parsed match {
+        case Seq(a) => Some(a)
+        case _ => None
+      }
+      so = (serverlessOption in key).value
+      _ = aws.? {
+        keys.RemoveDeployment(so).invoke(deploymentId).get
+      }
+    } yield ()).getOrElse {
+      sys.error("Error removeDeployment. useage: removeDeployment <deploymentId>")
     }
   }
 
