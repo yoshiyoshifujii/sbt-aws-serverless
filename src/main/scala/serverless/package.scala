@@ -17,6 +17,11 @@ package object serverless {
         )))
   }
 
+  sealed trait FunctionBase {
+    val name: String
+    val events: Events
+  }
+
   case class Function(filePath: File,
                       name: String,
                       description: Option[String] = None,
@@ -25,9 +30,13 @@ package object serverless {
                       timeout: Int = 10,
                       role: String,
                       environment: Map[String, String] = Map.empty,
-                      events: Events = Events.empty)
+                      events: Events = Events.empty) extends FunctionBase
 
-  case class Functions(private val functions: Function*) {
+  case class NotDeployLambdaFunction(name: String,
+                                     publishedVersion: Option[String] = None,
+                                     events: Events) extends FunctionBase
+
+  case class Functions(private val functions: FunctionBase*) {
 
     private lazy val sortedFunctions = functions.sortWith {
       (a, b) => {
@@ -35,7 +44,7 @@ package object serverless {
       }
     }
 
-    def map[B](f: Function => B) = sortedFunctions.map(f)
+    def map[B](f: FunctionBase => B) = sortedFunctions.map(f)
 
     def find(functionName: String) = functions.find(f => f.name == functionName)
 

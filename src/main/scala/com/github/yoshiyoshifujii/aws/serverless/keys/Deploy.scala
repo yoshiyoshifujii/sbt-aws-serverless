@@ -3,7 +3,7 @@ package com.github.yoshiyoshifujii.aws.serverless.keys
 import com.amazonaws.services.apigateway.model.PutMode
 import com.github.yoshiyoshifujii.aws.apigateway.{AWSApiGatewayAuthorize, AWSApiGatewayMethods, RequestTemplates, RestApiId}
 import com.github.yoshiyoshifujii.aws.kinesis
-import serverless.{AuthorizeEvent, HttpEvent, ServerlessOption, StreamEvent, Function => ServerlessFunction}
+import serverless.{Function => ServerlessFunction, _}
 
 import scala.util.Try
 
@@ -123,7 +123,7 @@ trait DeployBase extends DeployFunctionBase {
       )
 
   private def deployResource(restApiId: RestApiId,
-                             function: ServerlessFunction,
+                             function: FunctionBase,
                              lambdaAlias: Option[String],
                              httpEvent: HttpEvent) = {
     val method = AWSApiGatewayMethods(
@@ -149,6 +149,7 @@ trait DeployBase extends DeployFunctionBase {
   }
 
   private def deployAuthorizer(restApiId: RestApiId,
+                               function: FunctionBase,
                                lambdaAlias: Option[String],
                                authorizeEvent: AuthorizeEvent) = {
     lazy val authorize = AWSApiGatewayAuthorize(
@@ -158,7 +159,7 @@ trait DeployBase extends DeployFunctionBase {
       authId <- authorize.deployAuthorizer(
         name = authorizeEvent.name,
         awsAccountId = so.provider.awsAccount,
-        lambdaName = authorizeEvent.name,
+        lambdaName = function.name,
         lambdaAlias = lambdaAlias,
         identitySourceHeaderName = authorizeEvent.identitySourceHeaderName,
         identityValidationExpression = authorizeEvent.identityValidationExpression,
@@ -169,8 +170,8 @@ trait DeployBase extends DeployFunctionBase {
   }
 
   private def deployStream(stage: String,
-                         function: ServerlessFunction,
-                         streamEvent: StreamEvent) = {
+                           function: FunctionBase,
+                           streamEvent: StreamEvent) = {
     val functionArn = lambda.generateLambdaArn(so.provider.awsAccount)(function.name)(Some(stage))
 
     for {
@@ -199,7 +200,7 @@ trait DeployBase extends DeployFunctionBase {
 
   private def deployEvents(restApiId: RestApiId,
                            stage: String,
-                           function: ServerlessFunction,
+                           function: FunctionBase,
                            publishedVersion: PublishedVersion) =
     for {
       _ <- sequence {
@@ -207,7 +208,7 @@ trait DeployBase extends DeployFunctionBase {
           deployResource(
             restApiId = restApiId,
             function = function,
-            lambdaAlias = Option(generateLambdaAlias(httpEvent.uriLambdaAlias, publishedVersion)),
+            lambdaAlias = httpEvent.uriLambdaAlias.map(a => generateLambdaAlias(a, publishedVersion)),
             httpEvent = httpEvent
           )
         }
@@ -216,7 +217,8 @@ trait DeployBase extends DeployFunctionBase {
         function.events.authorizeEventsMap { authorizeEvent =>
           deployAuthorizer(
             restApiId = restApiId,
-            lambdaAlias = Option(authorizeEvent.uriLambdaAlias),
+            function = function,
+            lambdaAlias = authorizeEvent.uriLambdaAlias,
             authorizeEvent = authorizeEvent
           )
         }
@@ -238,22 +240,32 @@ trait DeployBase extends DeployFunctionBase {
   private def invokeFunctions(restApiId: RestApiId,
                               stage: String) =
     sequence {
-      so.functions.map { function =>
-        for {
-          _ <- invoke(function)
-          publishedVersion <- publishVersion(function)
-          _ <- deployAlias(
-            stage = stage,
-            function = function,
-            publishedVersion = publishedVersion
-          )
-          _ <- deployEvents(
-            restApiId = restApiId,
-            stage = stage,
-            function = function,
-            publishedVersion = publishedVersion
-          )
-        } yield ()
+      so.functions.map {
+        case (function: ServerlessFunction) =>
+          for {
+            _ <- invoke(function)
+            publishedVersion <- publishVersion(function)
+            _ <- deployAlias(
+              stage = stage,
+              function = function,
+              publishedVersion = publishedVersion
+            )
+            _ <- deployEvents(
+              restApiId = restApiId,
+              stage = stage,
+              function = function,
+              publishedVersion = publishedVersion
+            )
+          } yield ()
+        case (ndlFunction: NotDeployLambdaFunction) =>
+          for {
+            _ <- deployEvents(
+              restApiId = restApiId,
+              stage = stage,
+              function = ndlFunction,
+              publishedVersion = ndlFunction.publishedVersion
+            )
+          } yield ()
       }
     }
 

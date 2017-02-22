@@ -50,7 +50,12 @@ object Serverless {
       }
       so = (serverlessOption in key).value
       function <- so.functions.find(functionName)
-      _ = keys.DeployFunction(so).invoke(function).get
+      _ = function match {
+        case f: serverless.Function =>
+          keys.DeployFunction(so).invoke(f).get
+        case _ =>
+          ""
+      }
     } yield ()).getOrElse {
       sys.error("Error deployFunction. useage: deployFunction <functionName>")
     }
