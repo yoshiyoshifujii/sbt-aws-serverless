@@ -26,6 +26,20 @@ object Serverless {
     }
   }
 
+  def deployCopyTask(key: InputKey[Unit]): Initialize[InputTask[Unit]] = Def.inputTask {
+    (for {
+      (from, to) <- spaceDelimited("<from stage> <to stage>").parsed match {
+        case Seq(a, b) => Some(a -> b)
+        case _ => None
+      }
+      so = (serverlessOption in key).value
+      rootVersion = (version in key).?.value
+      _ = keys.DeployCopy(so, rootVersion).invoke(from, to).get
+    } yield ()).getOrElse {
+      sys.error("Error deployCopy. useage: deployCopy <from stage> <to stage>")
+    }
+  }
+
   def deployDevTask(key: InputKey[Unit]): Initialize[InputTask[Unit]] = Def.inputTask {
     (for {
       stage <- spaceDelimited("<stage>").parsed match {

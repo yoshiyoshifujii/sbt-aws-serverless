@@ -7,6 +7,8 @@ trait ServerlessKeys {
 
   lazy val deploy         = inputKey[Unit]("The deploy task deploys the entire service.")
 
+  lazy val deployCopy     = inputKey[Unit]("The deployCopy task copy stage A to B.")
+
   lazy val deployDev      = inputKey[Unit]("Deploy the deployDev task in development mode.")
 
   lazy val deployFunction = inputKey[Unit]("The deployFunc task deploys the AWS Lambda Function.")
