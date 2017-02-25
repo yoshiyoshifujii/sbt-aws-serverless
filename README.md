@@ -20,6 +20,8 @@ enablePlugins(ServerlessPlugin)
 
 `sbt deploy <stage>` deploys the entire service.
 
+`sbt deployCopy <from stage> <to stage>` The deployCopy task copy stage A to B.
+
 `sbt deployDev <stage>` Deploy the deployDev task in development mode.
 
 `sbt deployFunction <functionName>` The deployFunc task deploys the AWS Lambda Function.
