@@ -7,10 +7,111 @@ import serverless.{Function => ServerlessFunction, _}
 
 import scala.util.Try
 
-trait DeployBase extends DeployFunctionBase {
+trait DeployAlias extends KeysBase {
+  val version: Option[String]
+
+  private[keys] type PublishedVersion = Option[String]
+
+  protected def generateLambdaAlias(prefix: String, publishedVersion: PublishedVersion) =
+    publishedVersion.map(p => s"${prefix}_$p").getOrElse(prefix)
+
+  protected def generateFunctionVersion(publishedVersion: PublishedVersion) =
+    publishedVersion
+
+  private def deployAlias(function: ServerlessFunction,
+                          aliasName: String,
+                          functionVersion: Option[String],
+                          description: Option[String]) =
+    for {
+      aOp <- lambda.getAlias(function.name, aliasName)
+      aliasArn <- aOp map { _ =>
+        lambda.updateAlias(
+          functionName = function.name,
+          name = aliasName,
+          functionVersion = functionVersion,
+          description = description
+        ).map(_.getAliasArn)
+      } getOrElse {
+        for {
+          a <- lambda.createAlias(
+            functionName = function.name,
+            name = aliasName,
+            functionVersion = functionVersion,
+            description = description
+          )
+          _ <- lambda.addPermission(
+            functionArn = a.getAliasArn
+          )
+        } yield a.getAliasArn
+      }
+      _ = { println(s"Lambda Alias: $aliasArn") }
+    } yield ()
+
+  protected def deployAlias(stage: String,
+                            function: ServerlessFunction,
+                            publishedVersion: PublishedVersion): Try[Unit] =
+    Seq(
+      function.events.ifHasHttpEventDo {
+        () => deployAlias(
+          function = function,
+          aliasName = generateLambdaAlias(stage, publishedVersion),
+          functionVersion = generateFunctionVersion(publishedVersion),
+          description = version
+        )
+      },
+      function.events.ifHasAuthorizeEventDo {
+        () => deployAlias(
+          function = function,
+          aliasName = stage,
+          functionVersion = generateFunctionVersion(publishedVersion),
+          description = version
+        )
+      },
+      function.events.ifHasStreamEventDo {
+        () => deployAlias(
+          function = function,
+          aliasName = stage,
+          functionVersion = generateFunctionVersion(publishedVersion),
+          description = version
+        )
+      }
+    ).flatten
+      .foldLeft(Try())(
+        (c, d) => c.flatMap(_ => d())
+      )
+}
+
+trait DeployStream extends KeysBase {
+
+  protected def deployStream(stage: String,
+                             function: FunctionBase,
+                             streamEvent: StreamEvent) = {
+    val functionArn = lambda.generateLambdaArn(so.provider.awsAccount)(function.name)(Some(stage))
+
+    for {
+      _ <- lambda.deleteEventSourceMappings(functionArn)
+      c <- {
+        val eventSourceArn =
+          kinesis.generateKinesisStreamArn(
+            so.provider.region)(
+            so.provider.awsAccount)(
+            streamEvent.appendToTheNameSuffix(stage))
+        lambda.createEventSourceMapping(
+          functionArn = functionArn,
+          eventSourceArn = eventSourceArn,
+          batchSize = streamEvent.batchSize,
+          startPosition = streamEvent.startingPosition.value
+        )
+      }
+      _ = { println(s"Event Source Mapping: ${c.toString}") }
+    } yield c
+  }
+
+}
+
+trait DeployBase extends DeployFunctionBase with DeployAlias with DeployStream {
   val name: String
   val description: Option[String]
-  val version: Option[String]
 
   private def getOrCreateRestApi =
     for {
@@ -60,68 +161,6 @@ trait DeployBase extends DeployFunctionBase {
       _ = { println(s"Lambda published: ${publishVersionResult.getFunctionArn}") }
     } yield Option(publishVersionResult.getVersion)
 
-  private def deployAlias(function: ServerlessFunction,
-                          aliasName: String,
-                          functionVersion: Option[String],
-                          description: Option[String]) =
-    for {
-      aOp <- lambda.getAlias(function.name, aliasName)
-      aliasArn <- aOp map { _ =>
-        lambda.updateAlias(
-          functionName = function.name,
-          name = aliasName,
-          functionVersion = functionVersion,
-          description = description
-        ).map(_.getAliasArn)
-      } getOrElse {
-        for {
-          a <- lambda.createAlias(
-            functionName = function.name,
-            name = aliasName,
-            functionVersion = functionVersion,
-            description = description
-          )
-          _ <- lambda.addPermission(
-            functionArn = a.getAliasArn
-          )
-        } yield a.getAliasArn
-      }
-      _ = { println(s"Lambda Alias: $aliasArn") }
-    } yield ()
-
-  private def deployAlias(stage: String,
-                          function: ServerlessFunction,
-                          publishedVersion: PublishedVersion): Try[Unit] =
-    Seq(
-      function.events.ifHasHttpEventDo {
-        () => deployAlias(
-          function = function,
-          aliasName = generateLambdaAlias(stage, publishedVersion),
-          functionVersion = generateFunctionVersion(publishedVersion),
-          description = version
-        )
-      },
-      function.events.ifHasAuthorizeEventDo {
-        () => deployAlias(
-          function = function,
-          aliasName = stage,
-          functionVersion = generateFunctionVersion(publishedVersion),
-          description = version
-        )
-      },
-      function.events.ifHasStreamEventDo {
-        () => deployAlias(
-          function = function,
-          aliasName = stage,
-          functionVersion = generateFunctionVersion(publishedVersion),
-          description = version
-        )
-      }
-    ).flatten
-      .foldLeft(Try())(
-        (c, d) => c.flatMap(_ => d())
-      )
-
   private def deployResource(restApiId: RestApiId,
                              function: FunctionBase,
                              lambdaAlias: Option[String],
@@ -169,35 +208,6 @@ trait DeployBase extends DeployFunctionBase {
     } yield ()
   }
 
-  private def deployStream(stage: String,
-                           function: FunctionBase,
-                           streamEvent: StreamEvent) = {
-    val functionArn = lambda.generateLambdaArn(so.provider.awsAccount)(function.name)(Some(stage))
-
-    for {
-      _ <- lambda.deleteEventSourceMappings(functionArn)
-      c <- {
-        val eventSourceArn =
-          kinesis.generateKinesisStreamArn(
-            so.provider.region)(
-            so.provider.awsAccount)(
-            streamEvent.appendToTheNameSuffix(stage))
-        lambda.createEventSourceMapping(
-          functionArn = functionArn,
-          eventSourceArn = eventSourceArn,
-          batchSize = streamEvent.batchSize,
-          startPosition = streamEvent.startingPosition.value
-        )
-      }
-      _ = { println(s"Event Source Mapping: ${c.toString}") }
-    } yield c
-  }
-
-  private[keys] type PublishedVersion = Option[String]
-
-  private def generateLambdaAlias(prefix: String, publishedVersion: PublishedVersion) =
-    publishedVersion.map(p => s"${prefix}_$p").getOrElse(prefix)
-
   private def deployEvents(restApiId: RestApiId,
                            stage: String,
                            function: FunctionBase,
@@ -233,9 +243,6 @@ trait DeployBase extends DeployFunctionBase {
         }
       }
     } yield ()
-
-  protected def generateFunctionVersion(publishedVersion: PublishedVersion) =
-    publishedVersion
 
   private def invokeFunctions(restApiId: RestApiId,
                               stage: String) =
