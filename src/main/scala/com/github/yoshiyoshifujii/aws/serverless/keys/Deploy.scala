@@ -1,115 +1,17 @@
 package com.github.yoshiyoshifujii.aws.serverless.keys
 
 import com.amazonaws.services.apigateway.model.PutMode
-import com.github.yoshiyoshifujii.aws.apigateway.{AWSApiGatewayAuthorize, AWSApiGatewayMethods, RequestTemplates, RestApiId}
-import com.github.yoshiyoshifujii.aws.kinesis
+import com.github.yoshiyoshifujii.aws.apigateway.RestApiId
 import serverless.{Function => ServerlessFunction, _}
 
 import scala.util.Try
 
-trait DeployAlias extends KeysBase {
-  val version: Option[String]
-
-  private[keys] type PublishedVersion = Option[String]
-
-  protected def generateLambdaAlias(prefix: String, publishedVersion: PublishedVersion) =
-    publishedVersion.map(p => s"${prefix}_$p").getOrElse(prefix)
-
-  protected def generateFunctionVersion(publishedVersion: PublishedVersion) =
-    publishedVersion
-
-  private def deployAlias(function: ServerlessFunction,
-                          aliasName: String,
-                          functionVersion: Option[String],
-                          description: Option[String]) =
-    for {
-      aOp <- lambda.getAlias(function.name, aliasName)
-      aliasArn <- aOp map { _ =>
-        lambda.updateAlias(
-          functionName = function.name,
-          name = aliasName,
-          functionVersion = functionVersion,
-          description = description
-        ).map(_.getAliasArn)
-      } getOrElse {
-        for {
-          a <- lambda.createAlias(
-            functionName = function.name,
-            name = aliasName,
-            functionVersion = functionVersion,
-            description = description
-          )
-          _ <- lambda.addPermission(
-            functionArn = a.getAliasArn
-          )
-        } yield a.getAliasArn
-      }
-      _ = { println(s"Lambda Alias: $aliasArn") }
-    } yield ()
-
-  protected def deployAlias(stage: String,
-                            function: ServerlessFunction,
-                            publishedVersion: PublishedVersion): Try[Unit] =
-    Seq(
-      function.events.ifHasHttpEventDo {
-        () => deployAlias(
-          function = function,
-          aliasName = generateLambdaAlias(stage, publishedVersion),
-          functionVersion = generateFunctionVersion(publishedVersion),
-          description = version
-        )
-      },
-      function.events.ifHasAuthorizeEventDo {
-        () => deployAlias(
-          function = function,
-          aliasName = stage,
-          functionVersion = generateFunctionVersion(publishedVersion),
-          description = version
-        )
-      },
-      function.events.ifHasStreamEventDo {
-        () => deployAlias(
-          function = function,
-          aliasName = stage,
-          functionVersion = generateFunctionVersion(publishedVersion),
-          description = version
-        )
-      }
-    ).flatten
-      .foldLeft(Try())(
-        (c, d) => c.flatMap(_ => d())
-      )
-}
-
-trait DeployStream extends KeysBase {
-
-  protected def deployStream(stage: String,
-                             function: FunctionBase,
-                             streamEvent: StreamEvent) = {
-    val functionArn = lambda.generateLambdaArn(so.provider.awsAccount)(function.name)(Some(stage))
-
-    for {
-      _ <- lambda.deleteEventSourceMappings(functionArn)
-      c <- {
-        val eventSourceArn =
-          kinesis.generateKinesisStreamArn(
-            so.provider.region)(
-            so.provider.awsAccount)(
-            streamEvent.appendToTheNameSuffix(stage))
-        lambda.createEventSourceMapping(
-          functionArn = functionArn,
-          eventSourceArn = eventSourceArn,
-          batchSize = streamEvent.batchSize,
-          startPosition = streamEvent.startingPosition.value
-        )
-      }
-      _ = { println(s"Event Source Mapping: ${c.toString}") }
-    } yield c
-  }
-
-}
-
-trait DeployBase extends DeployFunctionBase with DeployAlias with DeployStream {
+trait DeployBase
+  extends DeployFunctionBase
+    with DeployAlias
+    with DeployResource
+    with DeployAuthorizer
+    with DeployStream {
   val name: String
   val description: Option[String]
 
@@ -160,53 +62,6 @@ trait DeployBase extends DeployFunctionBase with DeployAlias with DeployStream {
       )
       _ = { println(s"Lambda published: ${publishVersionResult.getFunctionArn}") }
     } yield Option(publishVersionResult.getVersion)
-
-  private def deployResource(restApiId: RestApiId,
-                             function: FunctionBase,
-                             lambdaAlias: Option[String],
-                             httpEvent: HttpEvent) = {
-    val method = AWSApiGatewayMethods(
-      regionName = so.provider.region,
-      restApiId = restApiId,
-      path = httpEvent.path,
-      httpMethod = httpEvent.method)
-
-    for {
-      resourceOpt <- method.deploy(
-        awsAccountId = so.provider.awsAccount,
-        lambdaName = function.name,
-        lambdaAlias = lambdaAlias,
-        requestTemplates = RequestTemplates(httpEvent.request.templateToSeq: _*),
-        responseTemplates = httpEvent.response.templates,
-        withAuth = withAuth(method)(
-          AWSApiGatewayAuthorize(so.provider.region, restApiId))(
-          httpEvent.authorizerName),
-        cors = httpEvent.cors
-      )
-      _ = { resourceOpt.foreach(r => println(s"Resource: ${r.toString}")) }
-    } yield ()
-  }
-
-  private def deployAuthorizer(restApiId: RestApiId,
-                               function: FunctionBase,
-                               lambdaAlias: Option[String],
-                               authorizeEvent: AuthorizeEvent) = {
-    lazy val authorize = AWSApiGatewayAuthorize(
-      so.provider.region, restApiId
-    )
-    for {
-      authId <- authorize.deployAuthorizer(
-        name = authorizeEvent.name,
-        awsAccountId = so.provider.awsAccount,
-        lambdaName = function.name,
-        lambdaAlias = lambdaAlias,
-        identitySourceHeaderName = authorizeEvent.identitySourceHeaderName,
-        identityValidationExpression = authorizeEvent.identityValidationExpression,
-        authorizerResultTtlInSeconds = Option(authorizeEvent.resultTtlInSeconds)
-      )
-      _ = { println(s"Authorizer: $authId") }
-    } yield ()
-  }
 
   private def deployEvents(restApiId: RestApiId,
                            stage: String,
@@ -276,8 +131,16 @@ trait DeployBase extends DeployFunctionBase with DeployAlias with DeployStream {
       }
     }
 
+  private def validateFunctions: Try[Unit] = Try {
+    val notExistsFunction = so.functions.notExistsFilePathFunctions
+    if (notExistsFunction.nonEmpty) {
+      throw new RuntimeException(s"Not Exists Function file path.\n${notExistsFunction.map(_.name).mkString("\n")}")
+    }
+  }
+
   def invoke(stage: String): Try[Unit] =
     for {
+      _ <- validateFunctions
       restApiId <- getOrCreateRestApi
       _ <- putRestApi(restApiId)
       _ <- invokeFunctions(restApiId, stage)

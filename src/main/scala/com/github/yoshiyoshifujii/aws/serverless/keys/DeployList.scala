@@ -1,6 +1,5 @@
 package com.github.yoshiyoshifujii.aws.serverless.keys
 
-import com.github.yoshiyoshifujii.aws.kinesis.AWSKinesis
 import serverless.ServerlessOption
 
 import scala.util.Try
@@ -31,9 +30,7 @@ trait DeployListBase extends KeysBase {
           f <- so.functions.filteredStreamEvents
           s <- f.events.streamEvents
         } yield for {
-          _ <- Try {
-            AWSKinesis(so.provider.region).printDescribeStream(s.appendToTheNameSuffix(stage))
-          }
+          _ <- s.printDescribe(so.provider.region, stage)
           _ <- {
             val functionArn =
               lambda.generateLambdaArn(so.provider.awsAccount)(f.name)(Some(stage))

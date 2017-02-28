@@ -6,10 +6,4 @@ package object kinesis {
   type AWSAccount = String
   type StreamName = String
 
-  lazy val generateKinesisStreamArn =
-    (regionName: Region) =>
-      (awsAccount: AWSAccount) =>
-        (streamName: StreamName) =>
-          s"arn:aws:kinesis:$regionName:$awsAccount:stream/$streamName"
-
 }

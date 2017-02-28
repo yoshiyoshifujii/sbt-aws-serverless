@@ -46,6 +46,13 @@ package object serverless {
 
     def map[B](f: FunctionBase => B) = sortedFunctions.map(f)
 
+    def notExistsFilePathFunctions = for {
+      fb <- functions
+      if fb.isInstanceOf[Function]
+      f = fb.asInstanceOf[Function]
+      if !f.filePath.exists()
+    } yield fb
+
     def find(functionName: String) = functions.find(f => f.name == functionName)
 
     lazy val filteredHttpEvents = functions.filter(_.events.hasHttpEvent)

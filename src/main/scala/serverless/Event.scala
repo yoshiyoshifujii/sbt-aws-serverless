@@ -1,6 +1,10 @@
 package serverless
 
 import com.amazonaws.services.lambda.model.EventSourcePosition
+import com.github.yoshiyoshifujii.aws.dynamodb.AWSDynamoDB
+import com.github.yoshiyoshifujii.aws.kinesis.AWSKinesis
+
+import scala.util.Try
 
 trait Event
 
@@ -36,20 +40,63 @@ case class AuthorizeEvent(name: String,
                           identitySourceHeaderName: String = "Authorization",
                           identityValidationExpression: Option[String] = None) extends Event
 
-case class StreamEvent(name: String,
-                       batchSize: Int = 100,
-                       startingPosition: StartingPosition = StartingPosition.TRIM_HORIZON,
-                       enabled: Boolean = true) extends Event {
+sealed trait StreamEvent extends Event {
+  val name: String
+  val batchSize: Int
+  val startingPosition: StartingPosition
+  val enabled: Boolean
 
   def appendToTheNameSuffix(stage: String) = s"$name-$stage"
+
+  def getArn(regionName: String, stage: String): Try[String]
+
+  def printDescribe(regionName: String, stage: String): Try[Unit]
+
 }
 
-sealed abstract class StartingPosition(val value: EventSourcePosition)
+case class KinesisStreamEvent(name: String,
+                              batchSize: Int = 100,
+                              startingPosition: KinesisStartingPosition = KinesisStartingPosition.TRIM_HORIZON,
+                              enabled: Boolean = true) extends StreamEvent {
+  override def getArn(regionName: String, stage: String) =
+    AWSKinesis(regionName).describeStream(appendToTheNameSuffix(stage))
+      .map(_.getStreamDescription.getStreamARN)
 
-object StartingPosition {
-  case object TRIM_HORIZON extends StartingPosition(EventSourcePosition.TRIM_HORIZON)
-  case object LATEST extends StartingPosition(EventSourcePosition.LATEST)
-  case object AT_TIMESTAMP extends StartingPosition(EventSourcePosition.AT_TIMESTAMP)
+  override def printDescribe(regionName: String, stage: String) = Try {
+    AWSKinesis(regionName).printDescribeStream(appendToTheNameSuffix(stage))
+  }
+}
+
+case class DynamoDBStreamEvent(name: String,
+                               batchSize: Int = 100,
+                               startingPosition: DynamoDBStartingPosition = DynamoDBStartingPosition.TRIM_HORIZON,
+                               enabled: Boolean = true) extends StreamEvent {
+  override def getArn(regionName: String, stage: String) =
+    AWSDynamoDB(regionName).describeTable(appendToTheNameSuffix(stage))
+      .map(_.getTable.getLatestStreamArn)
+
+  override def printDescribe(regionName: String, stage: String) = Try {
+    AWSDynamoDB(regionName).printTable(appendToTheNameSuffix(stage))
+  }
+}
+
+sealed trait StartingPosition {
+  val value: EventSourcePosition
+}
+
+sealed abstract class KinesisStartingPosition(val value: EventSourcePosition) extends StartingPosition
+
+object KinesisStartingPosition {
+  case object TRIM_HORIZON extends KinesisStartingPosition(EventSourcePosition.TRIM_HORIZON)
+  case object LATEST extends KinesisStartingPosition(EventSourcePosition.LATEST)
+  case object AT_TIMESTAMP extends KinesisStartingPosition(EventSourcePosition.AT_TIMESTAMP)
+}
+
+sealed abstract class DynamoDBStartingPosition(val value: EventSourcePosition) extends StartingPosition
+
+object DynamoDBStartingPosition {
+  case object TRIM_HORIZON extends DynamoDBStartingPosition(EventSourcePosition.TRIM_HORIZON)
+  case object LATEST extends DynamoDBStartingPosition(EventSourcePosition.LATEST)
 }
 
 case class Events(events: Event*) {

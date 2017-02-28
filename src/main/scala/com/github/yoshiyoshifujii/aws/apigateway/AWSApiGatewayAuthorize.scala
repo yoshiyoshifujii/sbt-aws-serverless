@@ -78,25 +78,23 @@ trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayRestApiWrapper {
     )
     for {
       aOp <- getAuthorizer(name)
-      id <- Try {
-        aOp map { a =>
-          updateAuthorizer(
-            authorizerId = a.getId,
-            name = name,
-            authorizerUri = authorizerUri,
-            identitySourceHeaderName = identitySourceHeaderName,
-            identityValidationExpression = identityValidationExpression,
-            authorizerResultTtlInSeconds = authorizerResultTtlInSeconds
-          ).get.getId
-        } getOrElse {
-          createAuthorizer(
-            name = name,
-            authorizerUri = authorizerUri,
-            identitySourceHeaderName = identitySourceHeaderName,
-            identityValidationExpression = identityValidationExpression,
-            authorizerResultTtlInSeconds = authorizerResultTtlInSeconds
-          ).get.getId
-        }
+      id <- aOp map { a =>
+        updateAuthorizer(
+          authorizerId = a.getId,
+          name = name,
+          authorizerUri = authorizerUri,
+          identitySourceHeaderName = identitySourceHeaderName,
+          identityValidationExpression = identityValidationExpression,
+          authorizerResultTtlInSeconds = authorizerResultTtlInSeconds
+        ).map(_.getId)
+      } getOrElse {
+        createAuthorizer(
+          name = name,
+          authorizerUri = authorizerUri,
+          identitySourceHeaderName = identitySourceHeaderName,
+          identityValidationExpression = identityValidationExpression,
+          authorizerResultTtlInSeconds = authorizerResultTtlInSeconds
+        ).map(_.getId)
       }
     } yield id
   }
