@@ -53,11 +53,6 @@ serverlessOption := {
       ))
     ),
     Functions(
-      NotDeployLambdaFunction(
-        name: String,
-        publishedVersion: Option[String] = None,
-        events: Events
-      ),
       Function(
         filePath: File,
         name: String,
@@ -85,13 +80,24 @@ serverlessOption := {
             identitySourceHeaderName: String = "Authorization",
             identityValidationExpression: Option[String] = None
           ),
-          StreamEvent(
+          KinesisStreamEvent(
             name: String,
             batchSize: Int = 100,
-            startingPosition: StartingPosition = StartingPosition.TRIM_HORIZON,
+            startingPosition: KinesisStartingPosition = KinesisStartingPosition.TRIM_HORIZON,
+            enabled: Boolean = true
+          ),
+          DynamoDBStreamEvent(
+            name: String,
+            batchSize: Int = 100,
+            startingPosition: DynamoDBStartingPosition = DynamoDBStartingPosition.TRIM_HORIZON,
             enabled: Boolean = true
           )
         )
+      ),
+      NotDeployLambdaFunction(
+        name: String,
+        publishedVersion: Option[String] = None,
+        events: Events
       )
     )
   )
