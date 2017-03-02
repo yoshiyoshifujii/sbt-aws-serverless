@@ -30,7 +30,15 @@ package object serverless {
                       timeout: Int = 10,
                       role: String,
                       environment: Map[String, String] = Map.empty,
-                      events: Events = Events.empty) extends FunctionBase
+                      events: Events = Events.empty) extends FunctionBase {
+
+    lazy val getEnvironment: String => Map[String, String] =
+      (stage: String) =>
+        if (environment.isEmpty)
+          Map("stage" -> stage)
+        else
+          environment
+  }
 
   case class NotDeployLambdaFunction(name: String,
                                      publishedVersion: Option[String] = None,

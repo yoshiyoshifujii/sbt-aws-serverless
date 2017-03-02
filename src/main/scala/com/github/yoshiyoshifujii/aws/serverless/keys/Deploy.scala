@@ -105,7 +105,7 @@ trait DeployBase
       so.functions.map {
         case (function: ServerlessFunction) =>
           for {
-            _ <- invoke(function)
+            _ <- invoke(function, Some(stage))
             publishedVersion <- publishVersion(function)
             _ <- deployAlias(
               stage = stage,

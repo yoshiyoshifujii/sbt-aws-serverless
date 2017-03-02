@@ -58,15 +58,16 @@ object Serverless {
 
   def deployFunctionTask(key: InputKey[Unit]): Initialize[InputTask[Unit]] = Def.inputTask {
     (for {
-      functionName <- spaceDelimited("<functionName>").parsed match {
-        case Seq(a) => Some(a)
+      (functionName, stageOpt) <- spaceDelimited("<functionName> [stage]").parsed match {
+        case Seq(a, b) => Some(a -> Some(b))
+        case Seq(a) => Some(a -> None)
         case _ => None
       }
       so = (serverlessOption in key).value
       function <- so.functions.find(functionName)
       _ = function match {
         case f: serverless.Function =>
-          keys.DeployFunction(so).invoke(f).get
+          keys.DeployFunction(so).invoke(f, stageOpt).get
         case _ =>
           ""
       }

@@ -6,7 +6,8 @@ import scala.util.Try
 
 trait DeployFunctionBase extends KeysBase {
 
-  def invoke(function: Function): Try[String] =
+  def invoke(function: Function,
+             stage: Option[String]): Try[String] =
     lambda.deploy(
       functionName = function.name,
       role = function.role,
@@ -16,7 +17,7 @@ trait DeployFunctionBase extends KeysBase {
       description = function.description,
       timeout = Option(function.timeout),
       memorySize = Option(function.memorySize),
-      environment = Option(function.environment),
+      environment = stage.map(function.getEnvironment(_)).orElse(Some(function.environment)),
       createAfter = arn => lambda.addPermission(arn)
     ).map { functionArn =>
       println(s"Lambda deployed: $functionArn")
