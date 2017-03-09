@@ -17,42 +17,51 @@ trait DeployBase
 
   private def getOrCreateRestApi =
     for {
-      restApiId <- {
-        so.provider.restApiId map { id =>
-          Try(id)
-        } getOrElse {
-          api.create(
-            name = name,
-            description = description
-          ).map(_.getId)
-        }
+      restApiId <- (for {
+        ag <- so.apiGateway
+        id <- ag.restApiId
+      } yield Try(id)) getOrElse {
+        api.create(
+          name = name,
+          description = description
+        ).map(_.getId)
       }
       _ = { println(s"API Gateway created: $restApiId") }
     } yield restApiId
 
   private def putRestApi(restApiId: RestApiId) =
-    for {
-      putRestApiResult <- api.put(
-        restApiId = restApiId,
-        body = so.provider.swagger,
-        mode = PutMode.Merge,
-        failOnWarnings = None
-      )
-      _ = { println(s"API Gateway put: ${putRestApiResult.getId}") }
-    } yield putRestApiResult
+    swap {
+      so.apiGateway map { ag =>
+        for {
+          putRestApiResult <- api.put(
+            restApiId = restApiId,
+            body = ag.swagger,
+            mode = PutMode.Merge,
+            failOnWarnings = None
+          )
+          _ = { println(s"API Gateway put: ${putRestApiResult.getId}") }
+        } yield putRestApiResult
+      }
+    }
 
   private def createDeployment(restApiId: RestApiId,
                                stage: String) =
-    for {
-      createDeploymentResult <- api.createDeployment(
-        restApiId = restApiId,
-        stageName = stage,
-        stageDescription = None,
-        description = version,
-        variables = so.provider.getStageVariables(stage)
-      )
-      _ = { println(s"Create Deployment: ${createDeploymentResult.toString}") }
-    } yield createDeploymentResult
+    swap {
+      so.apiGateway map { ag =>
+        for {
+          createDeploymentResult <- api.createDeployment(
+            restApiId = restApiId,
+            stageName = stage,
+            stageDescription = None,
+            description = version,
+            variables = ag.getStageVariables(so.provider.region, stage)
+          )
+          _ = {
+            println(s"Create Deployment: ${createDeploymentResult.toString}")
+          }
+        } yield createDeploymentResult
+      }
+    }
 
   protected def publishVersion(function: ServerlessFunction) =
     for {

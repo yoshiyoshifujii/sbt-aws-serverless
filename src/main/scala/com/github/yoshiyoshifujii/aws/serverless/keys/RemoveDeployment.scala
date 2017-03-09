@@ -9,9 +9,10 @@ trait RemoveDeploymentBase extends KeysBase {
   def invoke(deploymentId: String): Try[Unit] = {
     for {
       _ <- swap {
-        so.provider.restApiId.map { id =>
-          api.deleteDeployment(id, deploymentId)
-        }
+        for {
+          ag <- so.apiGateway
+          id <- ag.restApiId
+        } yield api.deleteDeployment(id, deploymentId)
       }
     } yield ()
   }

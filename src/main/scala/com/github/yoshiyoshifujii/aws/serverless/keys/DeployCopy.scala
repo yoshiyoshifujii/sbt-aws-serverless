@@ -68,14 +68,14 @@ trait DeployCopyBase extends DeployAlias with DeployStreamBase {
       }
     }
 
-  private def copyStage(fromStage: GetStageResult, to: String, restApiId: String) =
+  private def copyStage(fromStage: GetStageResult, to: String, ag: ApiGateway, restApiId: String) =
     for {
       toDeploymentId <- api.createOrUpdateStage(
         restApiId = restApiId,
         stageName = to,
         deploymentId = fromStage.getDeploymentId,
         description = None,
-        variables = so.provider.getStageVariables(to)
+        variables = ag.getStageVariables(so.provider.region, to)
       )
       _ = { println(s"Stage: $to($toDeploymentId).") }
     } yield ()
@@ -83,11 +83,12 @@ trait DeployCopyBase extends DeployAlias with DeployStreamBase {
   def invoke(from: String, to: String): Try[Option[Unit]] = {
     swap {
       for {
-        restApiId <- so.provider.restApiId
+        ag <- so.apiGateway
+        restApiId <- ag.restApiId
       } yield for {
         fromStage <- getFromStage(from, restApiId)
         _ <- copyFunctions(from, to, restApiId)
-        _ <- copyStage(fromStage, to, restApiId)
+        _ <- copyStage(fromStage, to, ag, restApiId)
       } yield ()
     }
   }

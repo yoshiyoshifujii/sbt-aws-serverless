@@ -12,13 +12,14 @@ trait DeployListBase extends KeysBase {
 
     for {
       _ <- swap {
-        so.provider.restApiId map { id =>
-          for {
-            _ <- api.printStages(id)
-            _ <- api.printDeployments(id)
-            _ <- api.printAuthorizers(id)
-          } yield ()
-        }
+        for {
+          ag <- so.apiGateway
+          id <- ag.restApiId
+        } yield for {
+          _ <- api.printStages(id)
+          _ <- api.printDeployments(id)
+          _ <- api.printAuthorizers(id)
+        } yield ()
       }
       _ <- sequence {
         so.functions.map { f =>
