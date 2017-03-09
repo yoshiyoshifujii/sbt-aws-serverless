@@ -7,7 +7,7 @@ import serverless.{Function => ServerlessFunction, _}
 import scala.collection.JavaConverters._
 import scala.util.Try
 
-trait DeployCopyBase extends DeployAlias with DeployStream {
+trait DeployCopyBase extends DeployAlias with DeployStreamBase {
 
   private def getFromStage(from: String, restApiId: RestApiId) =
     for {

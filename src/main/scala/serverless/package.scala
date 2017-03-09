@@ -42,7 +42,7 @@ package object serverless {
 
   case class NotDeployLambdaFunction(name: String,
                                      publishedVersion: Option[String] = None,
-                                     events: Events) extends FunctionBase
+                                     events: Events = Events.empty) extends FunctionBase
 
   case class Functions(private val functions: FunctionBase*) {
 
@@ -56,8 +56,10 @@ package object serverless {
 
     def notExistsFilePathFunctions = for {
       fb <- functions
-      if fb.isInstanceOf[Function]
-      f = fb.asInstanceOf[Function]
+      f <- fb match {
+        case a: Function => Some(a)
+        case _ => None
+      }
       if !f.filePath.exists()
     } yield fb
 

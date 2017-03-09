@@ -1,20 +1,36 @@
 package com.github.yoshiyoshifujii.aws.serverless.keys
 
-import serverless.{FunctionBase, StreamEvent}
+import serverless.{FunctionBase, ServerlessOption, StreamEvent}
 
-trait DeployStream extends KeysBase {
+import scala.util.Try
+
+trait DeployStreamBase extends KeysBase {
+
+  private lazy val delete: (Seq[FunctionBase]) => ((String) => String) => Try[Seq[_]] =
+    (oldFunctions: Seq[FunctionBase]) => (generateArn: String => String) =>
+      sequence {
+        oldFunctions map { f =>
+          val arn = generateArn(f.name)
+          lambda.deleteEventSourceMappings(arn)
+        }
+      }
 
   protected def deployStream(stage: String,
                              function: FunctionBase,
                              streamEvent: StreamEvent) = {
-    val functionArn = lambda.generateLambdaArn(so.provider.awsAccount)(function.name)(Some(stage))
+    lazy val generateArn: String => String =
+      (functionName) => lambda.generateLambdaArn(so.provider.awsAccount)(functionName)(Some(stage))
+
+    val functionArn = generateArn(function.name)
 
     for {
       _ <- lambda.deleteEventSourceMappings(functionArn)
+      _ <- delete(streamEvent.oldFunctions)(generateArn)
       eventSourceArn <- streamEvent.getArn(so.provider.region, stage)
       c <- lambda.createEventSourceMapping(
         functionArn = functionArn,
         eventSourceArn = eventSourceArn,
+        enabled = streamEvent.enabled,
         batchSize = streamEvent.batchSize,
         startPosition = streamEvent.startingPosition.value
       )
@@ -23,3 +39,22 @@ trait DeployStream extends KeysBase {
   }
 
 }
+
+case class DeployStream(so: ServerlessOption) extends DeployStreamBase {
+
+  def invoke(stage: String): Try[Unit] =
+    for {
+      _ <- sequence {
+        for {
+          f <- so.functions.filteredStreamEvents
+          e <- f.events.streamEvents
+        } yield deployStream(
+          stage = stage,
+          function = f,
+          streamEvent = e
+        )
+      }
+    } yield ()
+
+}
+

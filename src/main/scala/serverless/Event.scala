@@ -45,6 +45,7 @@ sealed trait StreamEvent extends Event {
   val batchSize: Int
   val startingPosition: StartingPosition
   val enabled: Boolean
+  val oldFunctions: Seq[FunctionBase]
 
   def appendToTheNameSuffix(stage: String) = s"$name-$stage"
 
@@ -57,7 +58,8 @@ sealed trait StreamEvent extends Event {
 case class KinesisStreamEvent(name: String,
                               batchSize: Int = 100,
                               startingPosition: KinesisStartingPosition = KinesisStartingPosition.TRIM_HORIZON,
-                              enabled: Boolean = true) extends StreamEvent {
+                              enabled: Boolean = true,
+                              oldFunctions: Seq[FunctionBase] = Seq.empty) extends StreamEvent {
   override def getArn(regionName: String, stage: String) =
     AWSKinesis(regionName).describeStream(appendToTheNameSuffix(stage))
       .map(_.getStreamDescription.getStreamARN)
@@ -70,7 +72,8 @@ case class KinesisStreamEvent(name: String,
 case class DynamoDBStreamEvent(name: String,
                                batchSize: Int = 100,
                                startingPosition: DynamoDBStartingPosition = DynamoDBStartingPosition.TRIM_HORIZON,
-                               enabled: Boolean = true) extends StreamEvent {
+                               enabled: Boolean = true,
+                               oldFunctions: Seq[FunctionBase] = Seq.empty) extends StreamEvent {
   override def getArn(regionName: String, stage: String) =
     AWSDynamoDB(regionName).describeTable(appendToTheNameSuffix(stage))
       .map(_.getTable.getLatestStreamArn)

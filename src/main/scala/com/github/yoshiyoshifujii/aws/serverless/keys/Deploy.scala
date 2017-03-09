@@ -11,7 +11,7 @@ trait DeployBase
     with DeployAlias
     with DeployResource
     with DeployAuthorizer
-    with DeployStream {
+    with DeployStreamBase {
   val name: String
   val description: Option[String]
 
