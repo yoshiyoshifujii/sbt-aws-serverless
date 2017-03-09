@@ -1,7 +1,6 @@
 package com.github.yoshiyoshifujii.aws.serverless.keys
 
 import com.amazonaws.services.apigateway.model.PutMode
-import com.github.yoshiyoshifujii.aws.apigateway.RestApiId
 import serverless.{Function => ServerlessFunction, _}
 
 import scala.util.Try
@@ -16,51 +15,53 @@ trait DeployBase
   val description: Option[String]
 
   private def getOrCreateRestApi =
-    for {
-      restApiId <- (for {
-        ag <- so.apiGateway
-        id <- ag.restApiId
-      } yield Try(id)) getOrElse {
-        api.create(
-          name = name,
-          description = description
-        ).map(_.getId)
-      }
-      _ = { println(s"API Gateway created: $restApiId") }
-    } yield restApiId
-
-  private def putRestApi(restApiId: RestApiId) =
     swap {
       so.apiGateway map { ag =>
         for {
-          putRestApiResult <- api.put(
-            restApiId = restApiId,
-            body = ag.swagger,
-            mode = PutMode.Merge,
-            failOnWarnings = None
-          )
-          _ = { println(s"API Gateway put: ${putRestApiResult.getId}") }
-        } yield putRestApiResult
+          restApiId <- ag.restApiId map { id =>
+            Try(id)
+          } getOrElse {
+            api.create(
+              name = name,
+              description = description
+            ).map(_.getId)
+          }
+          _ = { println(s"API Gateway created: $restApiId") }
+        } yield ()
       }
     }
 
-  private def createDeployment(restApiId: RestApiId,
-                               stage: String) =
+  private def putRestApi =
     swap {
-      so.apiGateway map { ag =>
-        for {
-          createDeploymentResult <- api.createDeployment(
-            restApiId = restApiId,
-            stageName = stage,
-            stageDescription = None,
-            description = version,
-            variables = ag.getStageVariables(so.provider.region, stage)
-          )
-          _ = {
-            println(s"Create Deployment: ${createDeploymentResult.toString}")
-          }
-        } yield createDeploymentResult
-      }
+      for {
+        ag <- so.apiGateway
+        restApiId <- ag.restApiId
+      } yield for {
+        putRestApiResult <- api.put(
+          restApiId = restApiId,
+          body = ag.swagger,
+          mode = PutMode.Merge,
+          failOnWarnings = None
+        )
+        _ = { println(s"API Gateway put: ${putRestApiResult.getId}") }
+      } yield putRestApiResult
+    }
+
+  private def createDeployment(stage: String) =
+    swap {
+      for {
+        ag <- so.apiGateway
+        restApiId <- ag.restApiId
+      } yield for {
+        createDeploymentResult <- api.createDeployment(
+          restApiId = restApiId,
+          stageName = stage,
+          stageDescription = None,
+          description = version,
+          variables = ag.getStageVariables(so.provider.region, stage)
+        )
+        _ = { println(s"Create Deployment: ${createDeploymentResult.toString}") }
+      } yield createDeploymentResult
     }
 
   protected def publishVersion(function: ServerlessFunction) =
@@ -72,29 +73,36 @@ trait DeployBase
       _ = { println(s"Lambda published: ${publishVersionResult.getFunctionArn}") }
     } yield Option(publishVersionResult.getVersion)
 
-  private def deployEvents(restApiId: RestApiId,
-                           stage: String,
+  private def deployEvents(stage: String,
                            function: FunctionBase,
                            publishedVersion: PublishedVersion) =
     for {
-      _ <- sequence {
-        function.events.httpEventsMap { httpEvent =>
-          deployResource(
-            restApiId = restApiId,
-            function = function,
-            lambdaAlias = httpEvent.uriLambdaAlias.map(a => generateLambdaAlias(a, publishedVersion)),
-            httpEvent = httpEvent
-          )
+      _ <- swap {
+        so.restApiId map { restApiId =>
+          sequence {
+            function.events.httpEventsMap { httpEvent =>
+              deployResource(
+                restApiId = restApiId,
+                function = function,
+                lambdaAlias = httpEvent.uriLambdaAlias.map(a => generateLambdaAlias(a, publishedVersion)),
+                httpEvent = httpEvent
+              )
+            }
+          }
         }
       }
-      _ <- sequence {
-        function.events.authorizeEventsMap { authorizeEvent =>
-          deployAuthorizer(
-            restApiId = restApiId,
-            function = function,
-            lambdaAlias = authorizeEvent.uriLambdaAlias,
-            authorizeEvent = authorizeEvent
-          )
+      _ <- swap {
+        so.restApiId map { restApiId =>
+          sequence {
+            function.events.authorizeEventsMap { authorizeEvent =>
+              deployAuthorizer(
+                restApiId = restApiId,
+                function = function,
+                lambdaAlias = authorizeEvent.uriLambdaAlias,
+                authorizeEvent = authorizeEvent
+              )
+            }
+          }
         }
       }
       _ <- sequence {
@@ -108,8 +116,7 @@ trait DeployBase
       }
     } yield ()
 
-  private def invokeFunctions(restApiId: RestApiId,
-                              stage: String) =
+  private def invokeFunctions(stage: String) =
     sequence {
       so.functions.map {
         case (function: ServerlessFunction) =>
@@ -122,7 +129,6 @@ trait DeployBase
               publishedVersion = publishedVersion
             )
             _ <- deployEvents(
-              restApiId = restApiId,
               stage = stage,
               function = function,
               publishedVersion = publishedVersion
@@ -131,7 +137,6 @@ trait DeployBase
         case (ndlFunction: NotDeployLambdaFunction) =>
           for {
             _ <- deployEvents(
-              restApiId = restApiId,
               stage = stage,
               function = ndlFunction,
               publishedVersion = ndlFunction.publishedVersion
@@ -150,10 +155,10 @@ trait DeployBase
   def invoke(stage: String): Try[Unit] =
     for {
       _ <- validateFunctions
-      restApiId <- getOrCreateRestApi
-      _ <- putRestApi(restApiId)
-      _ <- invokeFunctions(restApiId, stage)
-      _ <- createDeployment(restApiId, stage)
+      _ <- getOrCreateRestApi
+      _ <- putRestApi
+      _ <- invokeFunctions(stage)
+      _ <- createDeployment(stage)
     } yield ()
 
 }

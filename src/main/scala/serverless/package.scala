@@ -57,7 +57,7 @@ package object serverless {
     def notExistsFilePathFunctions = for {
       fb <- functions
       _ <- fb match {
-        case a: Function if a.filePath.exists() => Some(a)
+        case a: Function if !a.filePath.exists() => Some(a)
         case _ => None
       }
     } yield fb
@@ -71,7 +71,9 @@ package object serverless {
 
   case class ServerlessOption(provider: Provider,
                               apiGateway: Option[ApiGateway],
-                              functions: Functions)
+                              functions: Functions) {
+    lazy val restApiId = apiGateway.flatMap(_.restApiId)
+  }
 
   object ServerlessOption {
 
