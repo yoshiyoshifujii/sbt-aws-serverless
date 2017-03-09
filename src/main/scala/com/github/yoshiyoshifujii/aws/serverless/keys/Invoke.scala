@@ -15,7 +15,8 @@ trait InvokeBase extends KeysBase {
         function  <- so.functions.filteredHttpEvents
         httpEvent <- function.events.httpEventsMap(identity)
         input     <- httpEvent.invokeInput
-        restApiId <- so.provider.restApiId
+        ag        <- so.apiGateway
+        restApiId <- ag.restApiId
       } yield {
         val url = generateUrl(
           region = so.provider.region,

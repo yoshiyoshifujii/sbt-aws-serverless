@@ -4,16 +4,16 @@ package object serverless {
 
   case class Provider(awsAccount: String,
                       region: String = "us-east-1",
-                      deploymentBucket: String,
-                      swagger: File,
-                      restApiId: Option[String] = None,
-                      stageVariables: Option[Map[String, String]] = None) {
+                      deploymentBucket: String)
 
-    lazy val getStageVariables: String => Option[Map[String, String]] =
-      (stage: String) =>
+  case class ApiGateway(swagger: File,
+                        restApiId: Option[String] = None,
+                        stageVariables: Option[Map[String, String]] = None) {
+    lazy val getStageVariables: (String, String) => Option[Map[String, String]] =
+      (region, stage) =>
         stageVariables.orElse(Some(Map(
-          "env" -> stage,
-          "region" -> region
+          "region" -> region,
+          "env" -> stage
         )))
   }
 
@@ -42,7 +42,7 @@ package object serverless {
 
   case class NotDeployLambdaFunction(name: String,
                                      publishedVersion: Option[String] = None,
-                                     events: Events) extends FunctionBase
+                                     events: Events = Events.empty) extends FunctionBase
 
   case class Functions(private val functions: FunctionBase*) {
 
@@ -56,9 +56,10 @@ package object serverless {
 
     def notExistsFilePathFunctions = for {
       fb <- functions
-      if fb.isInstanceOf[Function]
-      f = fb.asInstanceOf[Function]
-      if !f.filePath.exists()
+      _ <- fb match {
+        case a: Function if !a.filePath.exists() => Some(a)
+        case _ => None
+      }
     } yield fb
 
     def find(functionName: String) = functions.find(f => f.name == functionName)
@@ -69,6 +70,21 @@ package object serverless {
   }
 
   case class ServerlessOption(provider: Provider,
-                              functions: Functions)
+                              apiGateway: Option[ApiGateway],
+                              functions: Functions) {
+    lazy val restApiId = apiGateway.flatMap(_.restApiId)
+  }
+
+  object ServerlessOption {
+
+    def apply(provider: Provider,
+              functions: Functions): ServerlessOption =
+      new ServerlessOption(provider, None, functions)
+
+    def apply(provider: Provider,
+              apiGateway: ApiGateway,
+              functions: Functions): ServerlessOption =
+      new ServerlessOption(provider, Some(apiGateway), functions)
+  }
 
 }

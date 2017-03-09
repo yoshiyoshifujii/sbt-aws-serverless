@@ -14,7 +14,8 @@ trait InformationBase extends KeysBase {
     val endpoints = for {
       functions <- so.functions.filteredHttpEvents
       httpEvent <- functions.events.httpEventsMap(identity)
-      restApiId <- so.provider.restApiId
+      ag <- so.apiGateway
+      restApiId <- ag.restApiId
     } yield {
       val url = generateUrl(
         region = so.provider.region,

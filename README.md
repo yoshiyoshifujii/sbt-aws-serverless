@@ -7,7 +7,7 @@ sbt plugin to deploy code to Amazon API Gateway and AWS Lambda
 Add the following to your `project/plugins.sbt` file:
 
 ```sbt
-addSbtPlugin("com.github.yoshiyoshifujii" % "sbt-aws-serverless" % "2.4.0")
+addSbtPlugin("com.github.yoshiyoshifujii" % "sbt-aws-serverless" % "2.5.0")
 ```
 
 Add the `ServerlessPlugin` auto-plugin to your build.sbt:
@@ -36,6 +36,8 @@ enablePlugins(ServerlessPlugin)
 
 `sbt removeDeployment <deploymentId>` remove the API Gateway deployments.
 
+`sbt serverlessDeployStream <stage>` The deployStream task deploys the AWS Stream Event.
+
 ## Configuration
 
 ```sbt
@@ -44,7 +46,9 @@ serverlessOption := {
     Provider(
       awsAccount: String,
       region: String = "us-east-1",
-      deploymentBucket: String,
+      deploymentBucket: String
+    ),
+    ApiGateway(
       swagger: File,
       restApiId: Option[String] = None,
       stageVariables: Option[Map[String, String]] = Some(Map(
@@ -84,13 +88,15 @@ serverlessOption := {
             name: String,
             batchSize: Int = 100,
             startingPosition: KinesisStartingPosition = KinesisStartingPosition.TRIM_HORIZON,
-            enabled: Boolean = true
+            enabled: Boolean = true,
+            oldFunctions: Seq[FunctionBase] = Seq.empty
           ),
           DynamoDBStreamEvent(
             name: String,
             batchSize: Int = 100,
             startingPosition: DynamoDBStartingPosition = DynamoDBStartingPosition.TRIM_HORIZON,
-            enabled: Boolean = true
+            enabled: Boolean = true,
+            oldFunctions: Seq[FunctionBase] = Seq.empty
           )
         )
       ),
