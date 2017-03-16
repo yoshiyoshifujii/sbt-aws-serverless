@@ -17,6 +17,7 @@ object Response {
       Response403(cors),
       Response404(cors),
       Response408(cors),
+      Response409(cors),
       Response500(cors)
     )
   )
@@ -38,6 +39,7 @@ object ResponseTemplatePatterns {
   val Response403 = (cors: Boolean) => ResponseTemplate("403", Some(""".*"statusCode":403.*"""), Map("application/json" -> responseErrorTemplate), parameters = corsMap(cors))
   val Response404 = (cors: Boolean) => ResponseTemplate("404", Some(""".*"statusCode":404.*"""), Map("application/json" -> responseErrorTemplate), parameters = corsMap(cors))
   val Response408 = (cors: Boolean) => ResponseTemplate("408", Some(""".*Task timed out.*"""), parameters = corsMap(cors))
+  val Response409 = (cors: Boolean) => ResponseTemplate("409", Some(""".*"statusCode":409.*"""), Map("application/json" -> responseErrorTemplate), parameters = corsMap(cors))
   val Response500 = (cors: Boolean) => ResponseTemplate("500", Some(""".*"statusCode":500.*"""), Map("application/json" -> responseErrorTemplate), parameters = corsMap(cors))
 
 }
