@@ -2,20 +2,18 @@ package com.github.yoshiyoshifujii.aws.s3
 
 import java.io.File
 
-import com.amazonaws.services.s3.AmazonS3Client
+import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.{CannedAccessControlList, PutObjectRequest}
-import com.amazonaws.regions.RegionUtils
-import com.github.yoshiyoshifujii.aws.AWSWrapper
+import com.github.yoshiyoshifujii.aws.{AWSCredentials, AWSWrapper}
 
 import scala.util.Try
 
 trait AWSS3Wrapper extends AWSWrapper {
   val regionName: String
-  lazy val client = {
-    val c = new AmazonS3Client()
-    c.setRegion(RegionUtils.getRegion(regionName))
-    c
-  }
+  lazy val client = AmazonS3ClientBuilder.standard()
+    .withCredentials(AWSCredentials.provider)
+    .withRegion(regionName)
+    .build()
 
   def put(bucketName: String, jar: File) = Try {
     val key = jar.getName

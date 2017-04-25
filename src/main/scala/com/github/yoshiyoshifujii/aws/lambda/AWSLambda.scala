@@ -1,7 +1,6 @@
 package com.github.yoshiyoshifujii.aws.lambda
 
-import com.amazonaws.regions.RegionUtils
-import com.amazonaws.services.lambda.AWSLambdaClient
+import com.amazonaws.services.lambda.AWSLambdaClientBuilder
 import com.amazonaws.services.lambda.model._
 import com.github.yoshiyoshifujii.aws.s3.AWSS3
 import com.github.yoshiyoshifujii.aws.{AWSCredentials, AWSWrapper}
@@ -17,11 +16,10 @@ trait AWSLambdaWrapper extends AWSWrapper {
 
   lazy val s3 = new AWSS3(regionName)
 
-  lazy val client = {
-    val c = new AWSLambdaClient(AWSCredentials.provider)
-    c.setRegion(RegionUtils.getRegion(regionName))
-    c
-  }
+  lazy val client = AWSLambdaClientBuilder.standard()
+    .withCredentials(AWSCredentials.provider)
+    .withRegion(regionName)
+    .build()
 
   private def toOpt[A](f: => A) =
     try {
@@ -61,6 +59,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
           .withRole(role)
           .withHandler(handler)
           .withCode(code)
+          .withTracingConfig(new TracingConfig().withMode(TracingMode.Active))
         description.foreach(request.setDescription)
         timeout.foreach(request.setTimeout(_))
         memorySize.foreach(request.setMemorySize(_))
@@ -106,6 +105,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
       .withRuntime(com.amazonaws.services.lambda.model.Runtime.Java8)
       .withHandler(handler)
       .withRole(role)
+      .withTracingConfig(new TracingConfig().withMode(TracingMode.Active))
     description.foreach(request.setDescription)
     timeout.foreach(request.setTimeout(_))
     memorySize.foreach(request.setMemorySize(_))

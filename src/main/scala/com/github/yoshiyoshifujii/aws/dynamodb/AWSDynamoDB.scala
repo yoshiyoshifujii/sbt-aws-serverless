@@ -1,7 +1,6 @@
 package com.github.yoshiyoshifujii.aws.dynamodb
 
-import com.amazonaws.regions.RegionUtils
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder
 import com.github.yoshiyoshifujii.aws.{AWSCredentials, AWSWrapper}
 import com.github.yoshiyoshifujii.cliformatter.CliFormatter
 
@@ -10,11 +9,10 @@ import scala.util.Try
 trait AWSDynamoDBWrapper extends AWSWrapper {
   val regionName: String
 
-  lazy val client = {
-    val c = new AmazonDynamoDBClient(AWSCredentials.provider)
-    c.setRegion(RegionUtils.getRegion(regionName))
-    c
-  }
+  lazy val client = AmazonDynamoDBClientBuilder.standard()
+    .withCredentials(AWSCredentials.provider)
+    .withRegion(regionName)
+    .build()
 
   def describeTable(tableName: String) = Try {
     client.describeTable(tableName)
