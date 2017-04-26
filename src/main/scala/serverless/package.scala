@@ -1,5 +1,8 @@
 import com.amazonaws.services.lambda.model.TracingMode
+import com.github.yoshiyoshifujii.aws.apigateway.RestApiId
 import sbt._
+
+import scala.util.Try
 
 package object serverless {
 
@@ -8,8 +11,21 @@ package object serverless {
                       deploymentBucket: String)
 
   case class ApiGateway(swagger: File,
-                        restApiId: Option[String] = None,
                         stageVariables: Option[Map[String, String]] = None) {
+    private val restApiIdFileName = ".sbt-serverless"
+    private val restApiIdFile = file(restApiIdFileName)
+
+    def restApiId: Option[RestApiId] =
+      if (restApiIdFile.exists()) Some(IO.read(restApiIdFile, IO.utf8).trim) else None
+
+    def writeRestApiId(restApiId: RestApiId): Try[Unit] = Try {
+      IO.write(restApiIdFile, restApiId, IO.utf8)
+    }
+
+    def deleteRestApiId(): Try[Unit] = Try {
+      IO.delete(restApiIdFile)
+    }
+
     lazy val getStageVariables: (String, String) => Option[Map[String, String]] =
       (region, stage) =>
         stageVariables.orElse(Some(Map(

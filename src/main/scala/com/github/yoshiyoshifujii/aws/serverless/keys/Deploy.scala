@@ -21,17 +21,20 @@ trait DeployBase
           restApiId <- ag.restApiId map { id =>
             Try(id)
           } getOrElse {
-            api.create(
-              name = name,
-              description = description
-            ).map(_.getId)
+            for {
+              c <- api.create(
+                name = name,
+                description = description
+              )
+              _ <- ag.writeRestApiId(c.getId)
+            } yield c.getId
           }
           _ = { println(s"API Gateway created: $restApiId") }
-        } yield ()
+        } yield restApiId
       }
     }
 
-  private def putRestApi =
+  private def putRestApi() =
     swap {
       for {
         ag <- so.apiGateway
@@ -155,7 +158,7 @@ trait DeployBase
   def invoke(stage: String): Try[Unit] =
     for {
       _ <- validateFunctions
-      _ <- getOrCreateRestApi
+      a <- getOrCreateRestApi
       _ <- putRestApi
       _ <- invokeFunctions(stage)
       _ <- createDeployment(stage)

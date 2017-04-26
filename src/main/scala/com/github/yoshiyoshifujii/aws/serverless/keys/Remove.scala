@@ -12,7 +12,10 @@ trait RemoveBase extends KeysBase {
         for {
           ag <- so.apiGateway
           id <- ag.restApiId
-        } yield api.delete(id)
+        } yield for {
+          _ <- api.delete(id)
+          _ <- ag.deleteRestApiId()
+        } yield ()
       }
       _ <- sequence {
         so.functions.map { f =>
