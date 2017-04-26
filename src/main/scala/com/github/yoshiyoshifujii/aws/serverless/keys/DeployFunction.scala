@@ -18,6 +18,7 @@ trait DeployFunctionBase extends KeysBase {
       timeout = Option(function.timeout),
       memorySize = Option(function.memorySize),
       environment = stage.map(function.getEnvironment(_)).orElse(Some(function.environment)),
+      tracingMode = function.tracing.map(_.value),
       createAfter = arn => lambda.addPermission(arn)
     ).map { functionArn =>
       println(s"Lambda deployed: $functionArn")

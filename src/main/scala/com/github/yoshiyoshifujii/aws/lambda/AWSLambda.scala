@@ -25,7 +25,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
     try {
       Some(f)
     } catch {
-      case e: ResourceNotFoundException => None
+      case _: ResourceNotFoundException => None
     }
 
   lazy val generateLambdaArn =
@@ -46,7 +46,8 @@ trait AWSLambdaWrapper extends AWSWrapper {
              description: Option[Description],
              timeout: Option[Timeout],
              memorySize: Option[MemorySize],
-             environment: Option[Map[String, String]]) = {
+             environment: Option[Map[String, String]],
+             tracingMode: Option[TracingMode]) = {
     for {
       key <- s3.put(bucketName, jar)
       code = new FunctionCode()
@@ -59,11 +60,11 @@ trait AWSLambdaWrapper extends AWSWrapper {
           .withRole(role)
           .withHandler(handler)
           .withCode(code)
-          .withTracingConfig(new TracingConfig().withMode(TracingMode.Active))
         description.foreach(request.setDescription)
         timeout.foreach(request.setTimeout(_))
         memorySize.foreach(request.setMemorySize(_))
         environment.foreach(e => request.setEnvironment(new Environment().withVariables(e.asJava)))
+        tracingMode.foreach(m => request.setTracingConfig(new TracingConfig().withMode(m)))
 
         client.createFunction(request)
       }
@@ -99,17 +100,18 @@ trait AWSLambdaWrapper extends AWSWrapper {
                    description: Option[Description],
                    timeout: Option[Timeout],
                    memorySize: Option[MemorySize],
-                   environment: Option[Map[String, String]]) = Try {
+                   environment: Option[Map[String, String]],
+                   tracingMode: Option[TracingMode]) = Try {
     val request = new UpdateFunctionConfigurationRequest()
       .withFunctionName(functionName)
       .withRuntime(com.amazonaws.services.lambda.model.Runtime.Java8)
       .withHandler(handler)
       .withRole(role)
-      .withTracingConfig(new TracingConfig().withMode(TracingMode.Active))
     description.foreach(request.setDescription)
     timeout.foreach(request.setTimeout(_))
     memorySize.foreach(request.setMemorySize(_))
     environment.foreach(e => request.setEnvironment(new Environment().withVariables(e.asJava)))
+    tracingMode.foreach(m => request.setTracingConfig(new TracingConfig().withMode(m)))
 
     client.updateFunctionConfiguration(request)
   }
@@ -181,7 +183,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
                           description: Option[Description]) =
     for {
       aliasOpt <- getAlias(functionName, name)
-      aliasArn <- aliasOpt map { a =>
+      aliasArn <- aliasOpt map { _ =>
         updateAlias(functionName, name, functionVersion, description).map(_.getAliasArn)
       } getOrElse {
         createAlias(functionName, name, functionVersion, description).map(_.getAliasArn)
@@ -243,12 +245,13 @@ trait AWSLambdaWrapper extends AWSWrapper {
              timeout: Option[Timeout],
              memorySize: Option[MemorySize],
              environment: Option[Map[String, String]],
-             createAfter: FunctionArn => Try[Any] = arn => Try()) = {
+             tracingMode: Option[TracingMode],
+             createAfter: FunctionArn => Try[Any] = _ => Try()) = {
     for {
       gfr <- get(functionName)
-      arn <- gfr map { f =>
+      arn <- gfr map { _ =>
         for {
-          u <- update(functionName, bucketName, jar)
+          _ <- update(functionName, bucketName, jar)
           uc <- updateConfig(
             functionName = functionName,
             role = role,
@@ -256,7 +259,8 @@ trait AWSLambdaWrapper extends AWSWrapper {
             description = description,
             timeout = timeout,
             memorySize = memorySize,
-            environment = environment)
+            environment = environment,
+            tracingMode = tracingMode)
         } yield uc.getFunctionArn
       } getOrElse {
         for {
@@ -269,7 +273,8 @@ trait AWSLambdaWrapper extends AWSWrapper {
             description = description,
             timeout = timeout,
             memorySize = memorySize,
-            environment = environment)
+            environment = environment,
+            tracingMode = tracingMode)
           _ <- createAfter(c.getFunctionArn)
         } yield c.getFunctionArn
       }
