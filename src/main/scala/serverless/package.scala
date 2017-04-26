@@ -1,3 +1,4 @@
+import com.amazonaws.services.lambda.model.TracingMode
 import sbt._
 
 package object serverless {
@@ -30,6 +31,7 @@ package object serverless {
                       timeout: Int = 10,
                       role: String,
                       environment: Map[String, String] = Map.empty,
+                      tracing: Option[Tracing] = None,
                       events: Events = Events.empty) extends FunctionBase {
 
     lazy val getEnvironment: String => Map[String, String] =
@@ -73,6 +75,13 @@ package object serverless {
                               apiGateway: Option[ApiGateway],
                               functions: Functions) {
     lazy val restApiId = apiGateway.flatMap(_.restApiId)
+  }
+
+  sealed abstract class Tracing(val value: TracingMode)
+
+  object Tracing {
+    case object PassThrough extends Tracing(TracingMode.PassThrough)
+    case object Active extends Tracing(TracingMode.Active)
   }
 
   object ServerlessOption {

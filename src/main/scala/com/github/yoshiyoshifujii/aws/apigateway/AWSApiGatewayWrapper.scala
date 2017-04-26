@@ -1,18 +1,16 @@
 package com.github.yoshiyoshifujii.aws.apigateway
 
-import com.amazonaws.regions.RegionUtils
-import com.amazonaws.services.apigateway.AmazonApiGatewayClient
+import com.amazonaws.services.apigateway.AmazonApiGatewayClientBuilder
 import com.amazonaws.services.apigateway.model._
-import com.github.yoshiyoshifujii.aws.AWSWrapper
+import com.github.yoshiyoshifujii.aws.{AWSCredentials, AWSWrapper}
 
 trait AWSApiGatewayWrapper extends AWSWrapper {
 
   val regionName: String
-  lazy val client = {
-    val c = new AmazonApiGatewayClient()
-    c.setRegion(RegionUtils.getRegion(regionName))
-    c
-  }
+  lazy val client = AmazonApiGatewayClientBuilder.standard()
+    .withCredentials(AWSCredentials.provider)
+    .withRegion(regionName)
+    .build()
 
   protected def toOpt[A](f: => A) =
     try {
