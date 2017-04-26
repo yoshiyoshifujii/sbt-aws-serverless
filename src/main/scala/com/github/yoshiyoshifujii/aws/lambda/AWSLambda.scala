@@ -2,10 +2,8 @@ package com.github.yoshiyoshifujii.aws.lambda
 
 import com.amazonaws.services.lambda.AWSLambdaClientBuilder
 import com.amazonaws.services.lambda.model._
-import com.github.yoshiyoshifujii.aws.s3.AWSS3
 import com.github.yoshiyoshifujii.aws.{AWSCredentials, AWSWrapper}
 import com.github.yoshiyoshifujii.cliformatter.CliFormatter
-import sbt._
 
 import scala.collection.JavaConverters._
 import scala.util.Try
@@ -13,8 +11,6 @@ import scala.util.Try
 trait AWSLambdaWrapper extends AWSWrapper {
 
   val regionName: String
-
-  lazy val s3 = new AWSS3(regionName)
 
   lazy val client = AWSLambdaClientBuilder.standard()
     .withCredentials(AWSCredentials.provider)
@@ -42,17 +38,16 @@ trait AWSLambdaWrapper extends AWSWrapper {
              role: Role,
              handler: Handler,
              bucketName: String,
-             jar: File,
+             key: String,
              description: Option[Description],
              timeout: Option[Timeout],
              memorySize: Option[MemorySize],
              environment: Option[Map[String, String]],
              tracingMode: Option[TracingMode]) = {
+    val code = new FunctionCode()
+      .withS3Bucket(bucketName)
+      .withS3Key(key)
     for {
-      key <- s3.put(bucketName, jar)
-      code = new FunctionCode()
-        .withS3Bucket(bucketName)
-        .withS3Key(key)
       cf <- Try {
         val request = new CreateFunctionRequest()
           .withFunctionName(functionName)
@@ -80,9 +75,8 @@ trait AWSLambdaWrapper extends AWSWrapper {
 
   def update(functionName: FunctionName,
              bucketName: String,
-             jar: File) = {
+             key: String) = {
     for {
-      key <- s3.put(bucketName, jar)
       uf <- Try {
         val request = new UpdateFunctionCodeRequest()
           .withFunctionName(functionName)
@@ -240,7 +234,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
              role: Role,
              handler: Handler,
              bucketName: String,
-             jar: File,
+             key: String,
              description: Option[Description],
              timeout: Option[Timeout],
              memorySize: Option[MemorySize],
@@ -251,7 +245,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
       gfr <- get(functionName)
       arn <- gfr map { _ =>
         for {
-          _ <- update(functionName, bucketName, jar)
+          _ <- update(functionName, bucketName, key)
           uc <- updateConfig(
             functionName = functionName,
             role = role,
@@ -269,7 +263,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
             role = role,
             handler = handler,
             bucketName = bucketName,
-            jar = jar,
+            key = key,
             description = description,
             timeout = timeout,
             memorySize = memorySize,

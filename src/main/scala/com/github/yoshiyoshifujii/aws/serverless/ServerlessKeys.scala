@@ -27,6 +27,8 @@ trait ServerlessKeys {
 
   lazy val serverlessOption = taskKey[ServerlessOption]("")
 
+  lazy val serverlessNoUploadMode = taskKey[Boolean]("")
+
   lazy val serverlessDeployStream = inputKey[Unit]("The deployStream task deploys the AWS Stream Event.")
 }
 

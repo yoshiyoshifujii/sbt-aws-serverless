@@ -20,7 +20,8 @@ object Serverless {
       rootName = (name in key).value
       rootDescription = (description in key).?.value
       rootVersion = (version in key).?.value
-      _ = keys.Deploy(so, rootName, rootDescription, rootVersion).invoke(stage).get
+      noUploadMode = (serverlessNoUploadMode in key).value
+      _ = keys.Deploy(so, rootName, rootDescription, rootVersion, noUploadMode).invoke(stage).get
     } yield ()).getOrElse {
       sys.error("Error deploy. useage: deploy <stage>")
     }
@@ -50,7 +51,8 @@ object Serverless {
       rootName = (name in key).value
       rootDescription = (description in key).?.value
       rootVersion = (version in key).?.value
-      _ = keys.DeployDev(so, rootName, rootDescription, rootVersion).invoke(stage).get
+      noUploadMode = (serverlessNoUploadMode in key).value
+      _ = keys.DeployDev(so, rootName, rootDescription, rootVersion, noUploadMode).invoke(stage).get
     } yield ()).getOrElse {
       sys.error("Error deploy. useage: deploy <stage>")
     }
@@ -64,10 +66,11 @@ object Serverless {
         case _ => None
       }
       so = (serverlessOption in key).value
+      noUploadMode = (serverlessNoUploadMode in key).value
       function <- so.functions.find(functionName)
       _ = function match {
         case f: serverless.Function =>
-          keys.DeployFunction(so).invoke(f, stageOpt).get
+          keys.DeployFunction(so, noUploadMode).invoke(f, stageOpt).get
         case _ =>
           ""
       }

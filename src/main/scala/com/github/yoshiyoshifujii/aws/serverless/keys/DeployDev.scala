@@ -17,5 +17,6 @@ trait DeployDevBase extends DeployBase {
 case class DeployDev(so: ServerlessOption,
                      name: String,
                      description: Option[String],
-                     version: Option[String]) extends DeployDevBase
+                     version: Option[String],
+                     noUploadMode: Boolean) extends DeployDevBase
 
