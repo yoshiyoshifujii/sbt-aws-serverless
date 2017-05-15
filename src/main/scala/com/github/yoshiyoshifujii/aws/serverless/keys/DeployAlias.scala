@@ -55,15 +55,7 @@ trait DeployAlias extends KeysBase {
           description = version
         )
       },
-      function.events.ifHasAuthorizeEventDo {
-        () => deployAlias(
-          function = function,
-          aliasName = stage,
-          functionVersion = generateFunctionVersion(publishedVersion),
-          description = version
-        )
-      },
-      function.events.ifHasStreamEventDo {
+      function.events.ifHasNotHttpEventDo {
         () => deployAlias(
           function = function,
           aliasName = stage,

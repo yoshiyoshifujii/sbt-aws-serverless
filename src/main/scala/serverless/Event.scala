@@ -130,6 +130,8 @@ case class Events(events: Event*) {
 
   def ifHasHttpEventDo[A](f: () => A): Option[() => A] = if (hasHttpEvent) Some(f) else None
 
+  def ifHasNotHttpEventDo[A](f: () => A): Option[() => A] = if (!hasHttpEvent) Some(f) else None
+
   def ifHasAuthorizeEventDo[A](f: () => A): Option[() => A] = if (hasAuthorizeEvent) Some(f) else None
 
   def ifHasStreamEventDo[A](f: () => A): Option[() => A] = if (hasStreamEvent) Some(f) else None
