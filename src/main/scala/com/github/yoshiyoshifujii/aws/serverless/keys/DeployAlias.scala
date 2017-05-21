@@ -21,12 +21,14 @@ trait DeployAlias extends KeysBase {
     for {
       aOp <- lambda.getAlias(function.name, aliasName)
       aliasArn <- aOp map { _ =>
-        lambda.updateAlias(
-          functionName = function.name,
-          name = aliasName,
-          functionVersion = functionVersion,
-          description = description
-        ).map(_.getAliasArn)
+        lambda
+          .updateAlias(
+            functionName = function.name,
+            name = aliasName,
+            functionVersion = functionVersion,
+            description = description
+          )
+          .map(_.getAliasArn)
       } getOrElse {
         for {
           a <- lambda.createAlias(
@@ -47,16 +49,16 @@ trait DeployAlias extends KeysBase {
                             function: ServerlessFunction,
                             publishedVersion: PublishedVersion): Try[Unit] =
     Seq(
-      function.events.ifHasHttpEventDo {
-        () => deployAlias(
+      function.events.ifHasHttpEventDo { () =>
+        deployAlias(
           function = function,
           aliasName = generateLambdaAlias(stage, publishedVersion),
           functionVersion = generateFunctionVersion(publishedVersion),
           description = version
         )
       },
-      function.events.ifHasNotHttpEventDo {
-        () => deployAlias(
+      function.events.ifHasNotHttpEventDo { () =>
+        deployAlias(
           function = function,
           aliasName = stage,
           functionVersion = generateFunctionVersion(publishedVersion),

@@ -41,8 +41,7 @@ trait InvokeBase extends KeysBase {
             s <- Option(r.getStatusLine)
           } yield {
             e.writeTo(out)
-            println(
-              s"""============================================================
+            println(s"""============================================================
                  |${httpEvent.method}:$url
                  |============================================================
                  |${s.getStatusCode}
@@ -57,4 +56,3 @@ trait InvokeBase extends KeysBase {
 }
 
 case class Invoke(so: ServerlessOption) extends InvokeBase
-

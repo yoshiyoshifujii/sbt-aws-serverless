@@ -12,7 +12,8 @@ trait AWSLambdaWrapper extends AWSWrapper {
 
   val regionName: String
 
-  lazy val client = AWSLambdaClientBuilder.standard()
+  lazy val client = AWSLambdaClientBuilder
+    .standard()
     .withCredentials(AWSCredentials.provider)
     .withRegion(regionName)
     .build()
@@ -32,7 +33,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
             s"arn:aws:lambda:$regionName:$awsAccount:function:$lambdaName:$alias"
           } getOrElse {
             s"arn:aws:lambda:$regionName:$awsAccount:function:$lambdaName"
-          }
+    }
 
   def create(functionName: FunctionName,
              role: Role,
@@ -73,9 +74,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
     toOpt(client.getFunction(request))
   }
 
-  def update(functionName: FunctionName,
-             bucketName: String,
-             key: String) = {
+  def update(functionName: FunctionName, bucketName: String, key: String) = {
     for {
       uf <- Try {
         val request = new UpdateFunctionCodeRequest()
@@ -127,8 +126,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
     client.addPermission(request)
   }
 
-  def publishVersion(functionName: FunctionName,
-                     description: Option[Description]) = Try {
+  def publishVersion(functionName: FunctionName, description: Option[Description]) = Try {
     val request = new PublishVersionRequest()
       .withFunctionName(functionName)
     description.foreach(request.setDescription)
@@ -162,8 +160,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
     client.updateAlias(request)
   }
 
-  def getAlias(functionName: FunctionName,
-               name: String) = Try {
+  def getAlias(functionName: FunctionName, name: String) = Try {
     val request = new GetAliasRequest()
       .withFunctionName(functionName)
       .withName(name)
@@ -198,12 +195,11 @@ trait AWSLambdaWrapper extends AWSWrapper {
       val p = CliFormatter(
         functionName,
         "Last modified" -> 30,
-        "Ver" -> 12,
-        "Description" -> 45
-      ).print3(
-        l.getVersions.asScala.map { v =>
-          (v.getLastModified, v.getVersion, v.getDescription)
-        }: _*)
+        "Ver"           -> 12,
+        "Description"   -> 45
+      ).print3(l.getVersions.asScala.map { v =>
+        (v.getLastModified, v.getVersion, v.getDescription)
+      }: _*)
       println(p)
     }
 
@@ -220,13 +216,12 @@ trait AWSLambdaWrapper extends AWSWrapper {
     } yield {
       val p = CliFormatter(
         functionName,
-        "Alias name" -> 20,
-        "Ver" -> 12,
+        "Alias name"  -> 20,
+        "Ver"         -> 12,
         "Description" -> 45
-      ).print3(
-        l.getAliases.asScala.map { a =>
-          (findAlias(a.getAliasArn), a.getFunctionVersion, a.getDescription)
-        }: _*)
+      ).print3(l.getAliases.asScala.map { a =>
+        (findAlias(a.getAliasArn), a.getFunctionVersion, a.getDescription)
+      }: _*)
       println(p)
     }
 
@@ -254,7 +249,8 @@ trait AWSLambdaWrapper extends AWSWrapper {
             timeout = timeout,
             memorySize = memorySize,
             environment = environment,
-            tracingMode = tracingMode)
+            tracingMode = tracingMode
+          )
         } yield uc.getFunctionArn
       } getOrElse {
         for {
@@ -268,7 +264,8 @@ trait AWSLambdaWrapper extends AWSWrapper {
             timeout = timeout,
             memorySize = memorySize,
             environment = environment,
-            tracingMode = tracingMode)
+            tracingMode = tracingMode
+          )
           _ <- createAfter(c.getFunctionArn)
         } yield c.getFunctionArn
       }
@@ -288,14 +285,13 @@ trait AWSLambdaWrapper extends AWSWrapper {
     } yield {
       val p = CliFormatter(
         functionArn,
-        "Last modified" -> 30,
-        "State" -> 12,
-        "UUID" -> 40,
+        "Last modified"    -> 30,
+        "State"            -> 12,
+        "UUID"             -> 40,
         "Event Source Arn" -> 100
-      ).print4(
-        l.getEventSourceMappings.asScala.map { e =>
-          (e.getLastModified.toString, e.getState, e.getUUID, e.getEventSourceArn)
-        }: _*)
+      ).print4(l.getEventSourceMappings.asScala.map { e =>
+        (e.getLastModified.toString, e.getState, e.getUUID, e.getEventSourceArn)
+      }: _*)
       println(p)
     }
 
@@ -303,7 +299,8 @@ trait AWSLambdaWrapper extends AWSWrapper {
                                eventSourceArn: EventSourceArn,
                                enabled: Boolean = true,
                                batchSize: Int = 100,
-                               startPosition: EventSourcePosition = EventSourcePosition.TRIM_HORIZON) = Try {
+                               startPosition: EventSourcePosition =
+                                 EventSourcePosition.TRIM_HORIZON) = Try {
     val request = new CreateEventSourceMappingRequest()
       .withEventSourceArn(eventSourceArn)
       .withFunctionName(functionArn)
@@ -329,4 +326,3 @@ trait AWSLambdaWrapper extends AWSWrapper {
 }
 
 case class AWSLambda(regionName: String) extends AWSLambdaWrapper
-

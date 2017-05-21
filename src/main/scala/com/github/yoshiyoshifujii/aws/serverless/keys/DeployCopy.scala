@@ -12,10 +12,12 @@ trait DeployCopyBase extends DeployAlias with DeployStreamBase {
   private def getFromStage(from: String, restApiId: RestApiId) =
     for {
       fromStageOpt <- api.getStage(restApiId, from)
-      fromStage <- Try(fromStageOpt.getOrElse(throw new RuntimeException(s"from stage is not exists. $from")))
+      fromStage <- Try(
+        fromStageOpt.getOrElse(throw new RuntimeException(s"from stage is not exists. $from")))
     } yield fromStage
 
-  private def getPublishedVersion(from: String, function: ServerlessFunction): Try[Option[String]] = {
+  private def getPublishedVersion(from: String,
+                                  function: ServerlessFunction): Try[Option[String]] = {
     for {
       lv <- lambda.listVersionsByFunction(function.name)
     } yield lv.getVersions.asScala.lastOption.map(_.getVersion)
@@ -43,7 +45,9 @@ trait DeployCopyBase extends DeployAlias with DeployStreamBase {
         case (function: ServerlessFunction) =>
           for {
             publishedVersion <- getPublishedVersion(from, function)
-            _ <- Try(publishedVersion.getOrElse(throw new RuntimeException(s"from not published. [$from] [${function.name}]")))
+            _ <- Try(
+              publishedVersion.getOrElse(
+                throw new RuntimeException(s"from not published. [$from] [${function.name}]")))
             _ <- deployAlias(
               stage = to,
               function = function,
@@ -83,18 +87,17 @@ trait DeployCopyBase extends DeployAlias with DeployStreamBase {
   def invoke(from: String, to: String): Try[Option[Unit]] = {
     swap {
       for {
-        ag <- so.apiGateway
+        ag        <- so.apiGateway
         restApiId <- ag.restApiId
-      } yield for {
-        fromStage <- getFromStage(from, restApiId)
-        _ <- copyFunctions(from, to, restApiId)
-        _ <- copyStage(fromStage, to, ag, restApiId)
-      } yield ()
+      } yield
+        for {
+          fromStage <- getFromStage(from, restApiId)
+          _         <- copyFunctions(from, to, restApiId)
+          _         <- copyStage(fromStage, to, ag, restApiId)
+        } yield ()
     }
   }
 
 }
 
-case class DeployCopy(so: ServerlessOption,
-                      version: Option[String]) extends DeployCopyBase
-
+case class DeployCopy(so: ServerlessOption, version: Option[String]) extends DeployCopyBase

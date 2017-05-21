@@ -10,7 +10,8 @@ import scala.util.Try
 trait AWSKinesisWrapper extends AWSWrapper {
   val regionName: String
 
-  lazy val client = AmazonKinesisClientBuilder.standard()
+  lazy val client = AmazonKinesisClientBuilder
+    .standard()
     .withCredentials(AWSCredentials.provider)
     .withRegion(regionName)
     .build()
@@ -27,10 +28,8 @@ trait AWSKinesisWrapper extends AWSWrapper {
       CliFormatter(
         streamName,
         "Stream ARN" -> 130,
-        "Status" -> 10
-      ).print2((
-        s.getStreamDescription.getStreamARN,
-        s.getStreamDescription.getStreamStatus))
+        "Status"     -> 10
+      ).print2((s.getStreamDescription.getStreamARN, s.getStreamDescription.getStreamStatus))
     } getOrElse {
       s"Not exists. $streamName"
     }
@@ -40,4 +39,3 @@ trait AWSKinesisWrapper extends AWSWrapper {
 }
 
 case class AWSKinesis(regionName: String) extends AWSKinesisWrapper
-

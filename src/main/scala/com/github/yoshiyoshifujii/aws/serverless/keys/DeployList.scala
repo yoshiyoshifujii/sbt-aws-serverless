@@ -15,11 +15,12 @@ trait DeployListBase extends KeysBase {
         for {
           ag <- so.apiGateway
           id <- ag.restApiId
-        } yield for {
-          _ <- api.printStages(id)
-          _ <- api.printDeployments(id)
-          _ <- api.printAuthorizers(id)
-        } yield ()
+        } yield
+          for {
+            _ <- api.printStages(id)
+            _ <- api.printDeployments(id)
+            _ <- api.printAuthorizers(id)
+          } yield ()
       }
       _ <- sequence {
         so.functions.map { f =>
@@ -33,15 +34,16 @@ trait DeployListBase extends KeysBase {
         for {
           f <- so.functions.filteredStreamEvents
           s <- f.events.streamEvents
-        } yield for {
-          _ <- s.printDescribe(so.provider.region, stage)
-          _ <- lambda.printEventSourceMappings(generateArn(f.name))
-          _ <- sequence {
-            s.oldFunctions map { of =>
-              lambda.printEventSourceMappings(generateArn(of.name))
+        } yield
+          for {
+            _ <- s.printDescribe(so.provider.region, stage)
+            _ <- lambda.printEventSourceMappings(generateArn(f.name))
+            _ <- sequence {
+              s.oldFunctions map { of =>
+                lambda.printEventSourceMappings(generateArn(of.name))
+              }
             }
-          }
-        } yield ()
+          } yield ()
       }
     } yield ()
   }
@@ -49,4 +51,3 @@ trait DeployListBase extends KeysBase {
 }
 
 case class DeployList(so: ServerlessOption) extends DeployListBase
-

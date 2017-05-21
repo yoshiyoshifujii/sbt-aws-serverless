@@ -5,9 +5,7 @@ import Keys._
 
 object ServerlessPlugin extends AutoPlugin {
 
-  object autoImport extends ServerlessKeys {
-
-  }
+  object autoImport extends ServerlessKeys {}
 
   import autoImport._
 
@@ -25,14 +23,11 @@ object ServerlessPlugin extends AutoPlugin {
     information := Serverless.informationTask(deploy).value,
     remove := Serverless.removeTask(deploy).value,
     removeDeployment := Serverless.removeDeploymentTask(deploy).evaluated,
-
     name in deploy := name.value,
     description in deploy := description.value,
     version in deploy := version.value,
     serverlessOption in deploy := serverlessOption.value,
     serverlessNoUploadMode in deploy := serverlessNoUploadMode.?.value.getOrElse(false),
-
     serverlessDeployStream := Serverless.deployStreamTask(deploy).evaluated
   )
 }
-

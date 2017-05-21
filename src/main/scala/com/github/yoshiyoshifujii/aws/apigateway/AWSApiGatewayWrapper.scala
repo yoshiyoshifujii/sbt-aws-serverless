@@ -7,7 +7,8 @@ import com.github.yoshiyoshifujii.aws.{AWSCredentials, AWSWrapper}
 trait AWSApiGatewayWrapper extends AWSWrapper {
 
   val regionName: String
-  lazy val client = AmazonApiGatewayClientBuilder.standard()
+  lazy val client = AmazonApiGatewayClientBuilder
+    .standard()
     .withCredentials(AWSCredentials.provider)
     .withRegion(regionName)
     .build()
@@ -19,4 +20,3 @@ trait AWSApiGatewayWrapper extends AWSWrapper {
       case e: NotFoundException => None
     }
 }
-

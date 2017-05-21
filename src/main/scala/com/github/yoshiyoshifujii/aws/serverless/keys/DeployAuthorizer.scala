@@ -10,7 +10,8 @@ trait DeployAuthorizer extends KeysBase {
                                  lambdaAlias: Option[String],
                                  authorizeEvent: AuthorizeEvent) = {
     lazy val authorize = AWSApiGatewayAuthorize(
-      so.provider.region, restApiId
+      so.provider.region,
+      restApiId
     )
     for {
       authId <- authorize.deployAuthorizer(

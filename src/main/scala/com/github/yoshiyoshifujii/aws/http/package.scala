@@ -8,34 +8,38 @@ import scala.util.Try
 
 package object http {
 
-  private lazy val withHeaders = (requestBuilder: RequestBuilder) => (headers: Seq[(String, String)]) =>
-    (requestBuilder /: headers)((b, h) => b.addHeader(h._1, h._2))
+  private lazy val withHeaders = (requestBuilder: RequestBuilder) =>
+    (headers: Seq[(String, String)]) =>
+      (requestBuilder /: headers)((b, h) => b.addHeader(h._1, h._2))
 
-  private lazy val withParameters = (requestBuilder: RequestBuilder) => (parameters: Seq[(String, String)]) =>
-    (requestBuilder /: parameters)((b, h) => b.addParameter(h._1, h._2))
+  private lazy val withParameters = (requestBuilder: RequestBuilder) =>
+    (parameters: Seq[(String, String)]) =>
+      (requestBuilder /: parameters)((b, h) => b.addParameter(h._1, h._2))
 
-  private lazy val withEntity = (requestBuilder: RequestBuilder) => (body: Option[Array[Byte]]) =>
-    body map { b =>
-      requestBuilder.setEntity(new ByteArrayEntity(b, ContentType.APPLICATION_JSON))
-    } getOrElse requestBuilder
+  private lazy val withEntity = (requestBuilder: RequestBuilder) =>
+    (body: Option[Array[Byte]]) =>
+      body map { b =>
+        requestBuilder.setEntity(new ByteArrayEntity(b, ContentType.APPLICATION_JSON))
+      } getOrElse requestBuilder
 
   private lazy val doRequest =
     (requestBuilder: RequestBuilder) =>
       (headers: Seq[(String, String)]) =>
         (parameters: Seq[(String, String)]) =>
-          (body: Option[Array[Byte]]) => Try {
-            val request =
-              withHeaders {
-                withParameters {
-                  withEntity {
-                    requestBuilder.addHeader("Content-Type", "application/json")
-                  }(body)
-                }(parameters)
-              }(headers)
+          (body: Option[Array[Byte]]) =>
+            Try {
+              val request =
+                withHeaders {
+                  withParameters {
+                    withEntity {
+                      requestBuilder.addHeader("Content-Type", "application/json")
+                    }(body)
+                  }(parameters)
+                }(headers)
 
-            val client = HttpClientBuilder.create.build
-            client.execute(request.build)
-          }
+              val client = HttpClientBuilder.create.build
+              client.execute(request.build)
+    }
 
   def generateUrl(region: String,
                   restApiId: String,
@@ -54,9 +58,7 @@ package object http {
     doRequest(RequestBuilder.create(method).setUri(url))(headers)(parameters)(body)
   }
 
-  def get(url: String,
-          headers: Seq[(String, String)],
-          parameters: Seq[(String, String)]) =
+  def get(url: String, headers: Seq[(String, String)], parameters: Seq[(String, String)]) =
     doRequest(RequestBuilder.get(url))(headers)(parameters)(None)
 
   def post(url: String,

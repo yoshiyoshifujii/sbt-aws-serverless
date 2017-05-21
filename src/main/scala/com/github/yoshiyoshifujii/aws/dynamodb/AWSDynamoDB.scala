@@ -9,7 +9,8 @@ import scala.util.Try
 trait AWSDynamoDBWrapper extends AWSWrapper {
   val regionName: String
 
-  lazy val client = AmazonDynamoDBClientBuilder.standard()
+  lazy val client = AmazonDynamoDBClientBuilder
+    .standard()
     .withCredentials(AWSCredentials.provider)
     .withRegion(regionName)
     .build()
@@ -22,11 +23,9 @@ trait AWSDynamoDBWrapper extends AWSWrapper {
     val p = describeTable(tableName) map { s =>
       CliFormatter(
         tableName,
-        "Table ARN" -> 130,
+        "Table ARN"  -> 130,
         "Stream ARN" -> 130
-      ).print2((
-        s.getTable.getTableArn,
-        s.getTable.getLatestStreamArn))
+      ).print2((s.getTable.getTableArn, s.getTable.getLatestStreamArn))
     } getOrElse {
       s"Not exists. $tableName"
     }
@@ -35,4 +34,3 @@ trait AWSDynamoDBWrapper extends AWSWrapper {
 }
 
 case class AWSDynamoDB(regionName: String) extends AWSDynamoDBWrapper
-

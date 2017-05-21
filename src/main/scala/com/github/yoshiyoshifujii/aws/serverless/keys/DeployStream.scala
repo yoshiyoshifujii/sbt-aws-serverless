@@ -7,25 +7,24 @@ import scala.util.Try
 trait DeployStreamBase extends KeysBase {
 
   private lazy val delete: (Seq[FunctionBase]) => ((String) => String) => Try[Seq[_]] =
-    (oldFunctions: Seq[FunctionBase]) => (generateArn: String => String) =>
-      sequence {
-        oldFunctions map { f =>
-          val arn = generateArn(f.name)
-          lambda.deleteEventSourceMappings(arn)
-        }
-      }
+    (oldFunctions: Seq[FunctionBase]) =>
+      (generateArn: String => String) =>
+        sequence {
+          oldFunctions map { f =>
+            val arn = generateArn(f.name)
+            lambda.deleteEventSourceMappings(arn)
+          }
+    }
 
-  protected def deployStream(stage: String,
-                             function: FunctionBase,
-                             streamEvent: StreamEvent) = {
+  protected def deployStream(stage: String, function: FunctionBase, streamEvent: StreamEvent) = {
     lazy val generateArn: String => String =
       (functionName) => lambda.generateLambdaArn(so.provider.awsAccount)(functionName)(Some(stage))
 
     val functionArn = generateArn(function.name)
 
     for {
-      _ <- lambda.deleteEventSourceMappings(functionArn)
-      _ <- delete(streamEvent.oldFunctions)(generateArn)
+      _              <- lambda.deleteEventSourceMappings(functionArn)
+      _              <- delete(streamEvent.oldFunctions)(generateArn)
       eventSourceArn <- streamEvent.getArn(so.provider.region, stage)
       c <- lambda.createEventSourceMapping(
         functionArn = functionArn,
@@ -48,13 +47,13 @@ case class DeployStream(so: ServerlessOption) extends DeployStreamBase {
         for {
           f <- so.functions.filteredStreamEvents
           e <- f.events.streamEvents
-        } yield deployStream(
-          stage = stage,
-          function = f,
-          streamEvent = e
-        )
+        } yield
+          deployStream(
+            stage = stage,
+            function = f,
+            streamEvent = e
+          )
       }
     } yield ()
 
 }
-

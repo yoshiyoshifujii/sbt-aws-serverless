@@ -6,14 +6,11 @@ import scala.util.Try
 
 package object serverless {
 
-  case class Provider(awsAccount: String,
-                      region: String = "us-east-1",
-                      deploymentBucket: String)
+  case class Provider(awsAccount: String, region: String = "us-east-1", deploymentBucket: String)
 
-  case class ApiGateway(swagger: File,
-                        stageVariables: Option[Map[String, String]] = None) {
+  case class ApiGateway(swagger: File, stageVariables: Option[Map[String, String]] = None) {
     private val restApiIdFileName = ".sbt-serverless"
-    private val restApiIdFile = file(restApiIdFileName)
+    private val restApiIdFile     = file(restApiIdFileName)
 
     def restApiId: Option[RestApiId] =
       if (restApiIdFile.exists()) Some(IO.read(restApiIdFile, IO.utf8).trim) else None
@@ -28,10 +25,12 @@ package object serverless {
 
     lazy val getStageVariables: (String, String) => Option[Map[String, String]] =
       (region, stage) =>
-        stageVariables.orElse(Some(Map(
-          "region" -> region,
-          "env" -> stage
-        )))
+        stageVariables.orElse(
+          Some(
+            Map(
+              "region" -> region,
+              "env"    -> stage
+            )))
   }
 
   sealed trait FunctionBase {
@@ -48,37 +47,40 @@ package object serverless {
                       role: String,
                       environment: Map[String, String] = Map.empty,
                       tracing: Option[Tracing] = None,
-                      events: Events = Events.empty) extends FunctionBase {
+                      events: Events = Events.empty)
+      extends FunctionBase {
 
     lazy val getEnvironment: String => Map[String, String] =
       (stage: String) =>
         if (environment.isEmpty)
           Map("stage" -> stage)
         else
-          environment
+        environment
   }
 
   case class NotDeployLambdaFunction(name: String,
                                      publishedVersion: Option[String] = None,
-                                     events: Events = Events.empty) extends FunctionBase
+                                     events: Events = Events.empty)
+      extends FunctionBase
 
   case class Functions(private val functions: FunctionBase*) {
 
-    private lazy val sortedFunctions = functions.sortWith {
-      (a, b) => {
+    private lazy val sortedFunctions = functions.sortWith { (a, b) =>
+      {
         a.events.hasAuthorizeEvent.compareTo(b.events.hasAuthorizeEvent) > 0
       }
     }
 
     def map[B](f: FunctionBase => B) = sortedFunctions.map(f)
 
-    def notExistsFilePathFunctions = for {
-      fb <- functions
-      _ <- fb match {
-        case a: Function if !a.filePath.exists() => Some(a)
-        case _ => None
-      }
-    } yield fb
+    def notExistsFilePathFunctions =
+      for {
+        fb <- functions
+        _ <- fb match {
+          case a: Function if !a.filePath.exists() => Some(a)
+          case _                                   => None
+        }
+      } yield fb
 
     def find(functionName: String) = functions.find(f => f.name == functionName)
 
@@ -97,18 +99,15 @@ package object serverless {
 
   object Tracing {
     case object PassThrough extends Tracing(TracingMode.PassThrough)
-    case object Active extends Tracing(TracingMode.Active)
+    case object Active      extends Tracing(TracingMode.Active)
   }
 
   object ServerlessOption {
 
-    def apply(provider: Provider,
-              functions: Functions): ServerlessOption =
+    def apply(provider: Provider, functions: Functions): ServerlessOption =
       new ServerlessOption(provider, None, functions)
 
-    def apply(provider: Provider,
-              apiGateway: ApiGateway,
-              functions: Functions): ServerlessOption =
+    def apply(provider: Provider, apiGateway: ApiGateway, functions: Functions): ServerlessOption =
       new ServerlessOption(provider, Some(apiGateway), functions)
   }
 

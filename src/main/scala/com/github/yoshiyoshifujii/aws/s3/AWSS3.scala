@@ -10,7 +10,8 @@ import scala.util.Try
 
 trait AWSS3Wrapper extends AWSWrapper {
   val regionName: String
-  lazy val client = AmazonS3ClientBuilder.standard()
+  lazy val client = AmazonS3ClientBuilder
+    .standard()
     .withCredentials(AWSCredentials.provider)
     .withRegion(regionName)
     .build()
@@ -19,7 +20,7 @@ trait AWSS3Wrapper extends AWSWrapper {
     val key = jar.getName
     for {
       exist <- doesObjectExist(bucketName, key)
-      res <- if (exist) Try(key) else put(bucketName, key, jar)
+      res   <- if (exist) Try(key) else put(bucketName, key, jar)
     } yield res
   }
 
@@ -41,4 +42,3 @@ trait AWSS3Wrapper extends AWSWrapper {
 }
 
 class AWSS3(val regionName: String) extends AWSS3Wrapper
-

@@ -23,12 +23,16 @@ package object aws {
     def toByteBuffer(file: File) = ByteBuffer.wrap(IOUtils.toByteArray(file))
 
     lazy val findAlias = (aliasArn: String) =>
-      new scala.util.matching.Regex("""^.*:(.*)$""", "alias").findAllIn(aliasArn).matchData.map(_.group("alias")).mkString("")
+      new scala.util.matching.Regex("""^.*:(.*)$""", "alias")
+        .findAllIn(aliasArn)
+        .matchData
+        .map(_.group("alias"))
+        .mkString("")
   }
 
   def ?[A](f: => A) =
     sbt.SimpleReader.readLine("delete ok? ") foreach { a =>
-      if("y" == a.trim.toLowerCase) f
+      if ("y" == a.trim.toLowerCase) f
     }
 
 }

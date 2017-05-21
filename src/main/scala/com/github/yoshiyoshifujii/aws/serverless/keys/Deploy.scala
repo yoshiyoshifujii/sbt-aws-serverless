@@ -6,7 +6,7 @@ import serverless.{Function => ServerlessFunction, _}
 import scala.util.Try
 
 trait DeployBase
-  extends DeployFunctionBase
+    extends DeployFunctionBase
     with DeployAlias
     with DeployResource
     with DeployAuthorizer
@@ -37,34 +37,36 @@ trait DeployBase
   private def putRestApi() =
     swap {
       for {
-        ag <- so.apiGateway
+        ag        <- so.apiGateway
         restApiId <- ag.restApiId
-      } yield for {
-        putRestApiResult <- api.put(
-          restApiId = restApiId,
-          body = ag.swagger,
-          mode = PutMode.Merge,
-          failOnWarnings = None
-        )
-        _ = { println(s"API Gateway put: ${putRestApiResult.getId}") }
-      } yield putRestApiResult
+      } yield
+        for {
+          putRestApiResult <- api.put(
+            restApiId = restApiId,
+            body = ag.swagger,
+            mode = PutMode.Merge,
+            failOnWarnings = None
+          )
+          _ = { println(s"API Gateway put: ${putRestApiResult.getId}") }
+        } yield putRestApiResult
     }
 
   private def createDeployment(stage: String) =
     swap {
       for {
-        ag <- so.apiGateway
+        ag        <- so.apiGateway
         restApiId <- ag.restApiId
-      } yield for {
-        createDeploymentResult <- api.createDeployment(
-          restApiId = restApiId,
-          stageName = stage,
-          stageDescription = None,
-          description = version,
-          variables = ag.getStageVariables(so.provider.region, stage)
-        )
-        _ = { println(s"Create Deployment: ${createDeploymentResult.toString}") }
-      } yield createDeploymentResult
+      } yield
+        for {
+          createDeploymentResult <- api.createDeployment(
+            restApiId = restApiId,
+            stageName = stage,
+            stageDescription = None,
+            description = version,
+            variables = ag.getStageVariables(so.provider.region, stage)
+          )
+          _ = { println(s"Create Deployment: ${createDeploymentResult.toString}") }
+        } yield createDeploymentResult
     }
 
   protected def publishVersion(function: ServerlessFunction) =
@@ -87,7 +89,8 @@ trait DeployBase
               deployResource(
                 restApiId = restApiId,
                 function = function,
-                lambdaAlias = httpEvent.uriLambdaAlias.map(a => generateLambdaAlias(a, publishedVersion)),
+                lambdaAlias =
+                  httpEvent.uriLambdaAlias.map(a => generateLambdaAlias(a, publishedVersion)),
                 httpEvent = httpEvent
               )
             }
@@ -124,7 +127,7 @@ trait DeployBase
       so.functions.map {
         case (function: ServerlessFunction) =>
           for {
-            _ <- invoke(function, Some(stage))
+            _                <- invoke(function, Some(stage))
             publishedVersion <- publishVersion(function)
             _ <- deployAlias(
               stage = stage,
@@ -151,7 +154,8 @@ trait DeployBase
   private def validateFunctions: Try[Unit] = Try {
     val notExistsFunction = so.functions.notExistsFilePathFunctions
     if (notExistsFunction.nonEmpty) {
-      throw new RuntimeException(s"Not Exists Function file path.\n${notExistsFunction.map(_.name).mkString("\n")}")
+      throw new RuntimeException(
+        s"Not Exists Function file path.\n${notExistsFunction.map(_.name).mkString("\n")}")
     }
   }
 
@@ -170,5 +174,5 @@ case class Deploy(so: ServerlessOption,
                   name: String,
                   description: Option[String],
                   version: Option[String],
-                  noUploadMode: Boolean) extends DeployBase
-
+                  noUploadMode: Boolean)
+    extends DeployBase

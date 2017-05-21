@@ -14,7 +14,7 @@ trait InformationBase extends KeysBase {
     val endpoints = for {
       functions <- so.functions.filteredHttpEvents
       httpEvent <- functions.events.httpEventsMap(identity)
-      ag <- so.apiGateway
+      ag        <- so.apiGateway
       restApiId <- ag.restApiId
     } yield {
       val url = generateUrl(
@@ -42,6 +42,4 @@ trait InformationBase extends KeysBase {
 
 }
 
-case class Information(so: ServerlessOption,
-                       rootName: String) extends InformationBase
-
+case class Information(so: ServerlessOption, rootName: String) extends InformationBase

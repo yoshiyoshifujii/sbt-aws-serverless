@@ -20,4 +20,3 @@ trait RemoveDeploymentBase extends KeysBase {
 }
 
 case class RemoveDeployment(so: ServerlessOption) extends RemoveDeploymentBase
-

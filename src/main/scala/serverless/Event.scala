@@ -15,7 +15,8 @@ case class HttpEvent(path: String,
                      `private`: Boolean = false,
                      authorizerName: Option[String] = None,
                      request: Request = Request(),
-                     invokeInput: Option[HttpInvokeInput] = None) extends Event {
+                     invokeInput: Option[HttpInvokeInput] = None)
+    extends Event {
   lazy val response: Response = Response(cors)
 }
 
@@ -38,7 +39,8 @@ case class AuthorizeEvent(name: String,
                           uriLambdaAlias: Option[String] = Some("${stageVariables.env}"),
                           resultTtlInSeconds: Int = 1800,
                           identitySourceHeaderName: String = "Authorization",
-                          identityValidationExpression: Option[String] = None) extends Event
+                          identityValidationExpression: Option[String] = None)
+    extends Event
 
 sealed trait StreamEvent extends Event {
   val name: String
@@ -57,11 +59,14 @@ sealed trait StreamEvent extends Event {
 
 case class KinesisStreamEvent(name: String,
                               batchSize: Int = 100,
-                              startingPosition: KinesisStartingPosition = KinesisStartingPosition.TRIM_HORIZON,
+                              startingPosition: KinesisStartingPosition =
+                                KinesisStartingPosition.TRIM_HORIZON,
                               enabled: Boolean = true,
-                              oldFunctions: Seq[FunctionBase] = Seq.empty) extends StreamEvent {
+                              oldFunctions: Seq[FunctionBase] = Seq.empty)
+    extends StreamEvent {
   override def getArn(regionName: String, stage: String) =
-    AWSKinesis(regionName).describeStream(appendToTheNameSuffix(stage))
+    AWSKinesis(regionName)
+      .describeStream(appendToTheNameSuffix(stage))
       .map(_.getStreamDescription.getStreamARN)
 
   override def printDescribe(regionName: String, stage: String) = Try {
@@ -71,11 +76,14 @@ case class KinesisStreamEvent(name: String,
 
 case class DynamoDBStreamEvent(name: String,
                                batchSize: Int = 100,
-                               startingPosition: DynamoDBStartingPosition = DynamoDBStartingPosition.TRIM_HORIZON,
+                               startingPosition: DynamoDBStartingPosition =
+                                 DynamoDBStartingPosition.TRIM_HORIZON,
                                enabled: Boolean = true,
-                               oldFunctions: Seq[FunctionBase] = Seq.empty) extends StreamEvent {
+                               oldFunctions: Seq[FunctionBase] = Seq.empty)
+    extends StreamEvent {
   override def getArn(regionName: String, stage: String) =
-    AWSDynamoDB(regionName).describeTable(appendToTheNameSuffix(stage))
+    AWSDynamoDB(regionName)
+      .describeTable(appendToTheNameSuffix(stage))
       .map(_.getTable.getLatestStreamArn)
 
   override def printDescribe(regionName: String, stage: String) = Try {
@@ -87,37 +95,42 @@ sealed trait StartingPosition {
   val value: EventSourcePosition
 }
 
-sealed abstract class KinesisStartingPosition(val value: EventSourcePosition) extends StartingPosition
+sealed abstract class KinesisStartingPosition(val value: EventSourcePosition)
+    extends StartingPosition
 
 object KinesisStartingPosition {
   case object TRIM_HORIZON extends KinesisStartingPosition(EventSourcePosition.TRIM_HORIZON)
-  case object LATEST extends KinesisStartingPosition(EventSourcePosition.LATEST)
+  case object LATEST       extends KinesisStartingPosition(EventSourcePosition.LATEST)
   case object AT_TIMESTAMP extends KinesisStartingPosition(EventSourcePosition.AT_TIMESTAMP)
 }
 
-sealed abstract class DynamoDBStartingPosition(val value: EventSourcePosition) extends StartingPosition
+sealed abstract class DynamoDBStartingPosition(val value: EventSourcePosition)
+    extends StartingPosition
 
 object DynamoDBStartingPosition {
   case object TRIM_HORIZON extends DynamoDBStartingPosition(EventSourcePosition.TRIM_HORIZON)
-  case object LATEST extends DynamoDBStartingPosition(EventSourcePosition.LATEST)
+  case object LATEST       extends DynamoDBStartingPosition(EventSourcePosition.LATEST)
 }
 
 case class Events(events: Event*) {
 
   lazy val httpEvents: Seq[HttpEvent] =
-    events.filter(_.isInstanceOf[HttpEvent])
+    events
+      .filter(_.isInstanceOf[HttpEvent])
       .map(_.asInstanceOf[HttpEvent])
 
   def httpEventsMap[B](f: HttpEvent => B): Seq[B] = httpEvents map f
 
   lazy val authorizeEvents: Seq[AuthorizeEvent] =
-    events.filter(_.isInstanceOf[AuthorizeEvent])
+    events
+      .filter(_.isInstanceOf[AuthorizeEvent])
       .map(_.asInstanceOf[AuthorizeEvent])
 
   def authorizeEventsMap[B](f: AuthorizeEvent => B): Seq[B] = authorizeEvents map f
 
   lazy val streamEvents: Seq[StreamEvent] =
-    events.filter(_.isInstanceOf[StreamEvent])
+    events
+      .filter(_.isInstanceOf[StreamEvent])
       .map(_.asInstanceOf[StreamEvent])
 
   def streamEventsMap[B](f: StreamEvent => B): Seq[B] = streamEvents map f
@@ -132,7 +145,8 @@ case class Events(events: Event*) {
 
   def ifHasNotHttpEventDo[A](f: () => A): Option[() => A] = if (!hasHttpEvent) Some(f) else None
 
-  def ifHasAuthorizeEventDo[A](f: () => A): Option[() => A] = if (hasAuthorizeEvent) Some(f) else None
+  def ifHasAuthorizeEventDo[A](f: () => A): Option[() => A] =
+    if (hasAuthorizeEvent) Some(f) else None
 
   def ifHasStreamEventDo[A](f: () => A): Option[() => A] = if (hasStreamEvent) Some(f) else None
 }

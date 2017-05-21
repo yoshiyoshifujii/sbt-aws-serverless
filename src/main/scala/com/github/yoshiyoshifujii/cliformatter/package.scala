@@ -17,29 +17,27 @@ package object cliformatter {
 
     lazy val ====== = line("=")(tableSize)
 
-    lazy val ------ = list.foldLeft("|")((b, d) => s"$b${line("-")(d.size+2)}|")
+    lazy val ------ = list.foldLeft("|")((b, d) => s"$b${line("-")(d.size + 2)}|")
 
-    lazy val printBody = (body: Seq[Product]) => body.map(b => template.format(b.productIterator.toSeq: _*))
+    lazy val printBody = (body: Seq[Product]) =>
+      body.map(b => template.format(b.productIterator.toSeq: _*))
 
-    lazy val printSeq = (body: Seq[Product]) => Seq(
-      ======,
-      title,
-      ======,
-      header,
-      ------) ++
-      printBody(body)
+    lazy val printSeq = (body: Seq[Product]) =>
+      Seq(======, title, ======, header, ------) ++
+        printBody(body)
 
     lazy val print = (body: Seq[Product]) => printSeq(body).mkString("\n")
   }
 
   case class CliFormatter(tableDefinitions: TableDefinitions) {
 
-    def print1(body: Tuple1[String]*) = tableDefinitions.print(body)
-    def print2(body: (String, String)*) = tableDefinitions.print(body)
-    def print3(body: (String, String, String)*) = tableDefinitions.print(body)
-    def print4(body: (String, String, String, String)*) = tableDefinitions.print(body)
+    def print1(body: Tuple1[String]*)                           = tableDefinitions.print(body)
+    def print2(body: (String, String)*)                         = tableDefinitions.print(body)
+    def print3(body: (String, String, String)*)                 = tableDefinitions.print(body)
+    def print4(body: (String, String, String, String)*)         = tableDefinitions.print(body)
     def print5(body: (String, String, String, String, String)*) = tableDefinitions.print(body)
-    def print6(body: (String, String, String, String, String, String)*) = tableDefinitions.print(body)
+    def print6(body: (String, String, String, String, String, String)*) =
+      tableDefinitions.print(body)
 
   }
 
@@ -47,7 +45,8 @@ package object cliformatter {
     def apply(title: String, definitions: (String, Int)*): CliFormatter =
       new CliFormatter(
         TableDefinitions(
-          title, definitions.map(d => TableDefinition(d._1, d._2))
+          title,
+          definitions.map(d => TableDefinition(d._1, d._2))
         )
       )
   }

@@ -18,5 +18,5 @@ case class DeployDev(so: ServerlessOption,
                      name: String,
                      description: Option[String],
                      version: Option[String],
-                     noUploadMode: Boolean) extends DeployDevBase
-
+                     noUploadMode: Boolean)
+    extends DeployDevBase

@@ -1,17 +1,17 @@
 package serverless
 
-abstract class RequestTemplate(contentType: String,
-                               template: String) {
+abstract class RequestTemplate(contentType: String, template: String) {
   def toTuple: (String, String) = contentType -> template
 }
 
 object RequestTemplate {
 
-  case object ApplicationJson extends RequestTemplate(
-    "application/json", DefaultRequestTemplate.AllParameters)
+  case object ApplicationJson
+      extends RequestTemplate("application/json", DefaultRequestTemplate.AllParameters)
 
-  case object ApplicationXWwwFormUrlencoded extends RequestTemplate(
-    "application/x-www-form-urlencoded", DefaultRequestTemplate.AllParameters)
+  case object ApplicationXWwwFormUrlencoded
+      extends RequestTemplate("application/x-www-form-urlencoded",
+                              DefaultRequestTemplate.AllParameters)
 
 }
 

@@ -12,8 +12,7 @@ trait DeployFunctionBase extends KeysBase {
 
   private lazy val s3 = new AWSS3(so.provider.region)
 
-  def invoke(function: Function,
-             stage: Option[String]): Try[String] = {
+  def invoke(function: Function, stage: Option[String]): Try[String] = {
 
     val putS3: (String, File) => Try[String] =
       if (noUploadMode) s3.putIfDoesNotObjectExist else s3.put
@@ -44,6 +43,4 @@ trait DeployFunctionBase extends KeysBase {
 
 }
 
-case class DeployFunction(so: ServerlessOption,
-                          noUploadMode: Boolean) extends DeployFunctionBase
-
+case class DeployFunction(so: ServerlessOption, noUploadMode: Boolean) extends DeployFunctionBase

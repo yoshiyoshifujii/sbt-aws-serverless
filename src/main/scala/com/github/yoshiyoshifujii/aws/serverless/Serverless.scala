@@ -14,14 +14,14 @@ object Serverless {
     (for {
       stage <- spaceDelimited("<stage>").parsed match {
         case Seq(a) => Some(a)
-        case _ => None
+        case _      => None
       }
-      so = (serverlessOption in key).value
-      rootName = (name in key).value
+      so              = (serverlessOption in key).value
+      rootName        = (name in key).value
       rootDescription = (description in key).?.value
-      rootVersion = (version in key).?.value
-      noUploadMode = (serverlessNoUploadMode in key).value
-      _ = keys.Deploy(so, rootName, rootDescription, rootVersion, noUploadMode).invoke(stage).get
+      rootVersion     = (version in key).?.value
+      noUploadMode    = (serverlessNoUploadMode in key).value
+      _               = keys.Deploy(so, rootName, rootDescription, rootVersion, noUploadMode).invoke(stage).get
     } yield ()).getOrElse {
       sys.error("Error deploy. useage: deploy <stage>")
     }
@@ -31,11 +31,11 @@ object Serverless {
     (for {
       (from, to) <- spaceDelimited("<from stage> <to stage>").parsed match {
         case Seq(a, b) => Some(a -> b)
-        case _ => None
+        case _         => None
       }
-      so = (serverlessOption in key).value
+      so          = (serverlessOption in key).value
       rootVersion = (version in key).?.value
-      _ = keys.DeployCopy(so, rootVersion).invoke(from, to).get
+      _           = keys.DeployCopy(so, rootVersion).invoke(from, to).get
     } yield ()).getOrElse {
       sys.error("Error deployCopy. useage: deployCopy <from stage> <to stage>")
     }
@@ -45,14 +45,17 @@ object Serverless {
     (for {
       stage <- spaceDelimited("<stage>").parsed match {
         case Seq(a) => Some(a)
-        case _ => None
+        case _      => None
       }
-      so = (serverlessOption in key).value
-      rootName = (name in key).value
+      so              = (serverlessOption in key).value
+      rootName        = (name in key).value
       rootDescription = (description in key).?.value
-      rootVersion = (version in key).?.value
-      noUploadMode = (serverlessNoUploadMode in key).value
-      _ = keys.DeployDev(so, rootName, rootDescription, rootVersion, noUploadMode).invoke(stage).get
+      rootVersion     = (version in key).?.value
+      noUploadMode    = (serverlessNoUploadMode in key).value
+      _ = keys
+        .DeployDev(so, rootName, rootDescription, rootVersion, noUploadMode)
+        .invoke(stage)
+        .get
     } yield ()).getOrElse {
       sys.error("Error deploy. useage: deploy <stage>")
     }
@@ -62,10 +65,10 @@ object Serverless {
     (for {
       (functionName, stageOpt) <- spaceDelimited("<functionName> [stage]").parsed match {
         case Seq(a, b) => Some(a -> Some(b))
-        case Seq(a) => Some(a -> None)
-        case _ => None
+        case Seq(a)    => Some(a -> None)
+        case _         => None
       }
-      so = (serverlessOption in key).value
+      so           = (serverlessOption in key).value
       noUploadMode = (serverlessNoUploadMode in key).value
       function <- so.functions.find(functionName)
       _ = function match {
@@ -83,10 +86,10 @@ object Serverless {
     (for {
       stage <- spaceDelimited("<stage>").parsed match {
         case Seq(a) => Some(a)
-        case _ => None
+        case _      => None
       }
       so = (serverlessOption in key).value
-      _ = keys.DeployList(so).invoke(stage).get
+      _  = keys.DeployList(so).invoke(stage).get
     } yield ()).getOrElse {
       sys.error("Error deployList. useage: deployList <stage>")
     }
@@ -96,17 +99,17 @@ object Serverless {
     (for {
       stage <- spaceDelimited("<stage>").parsed match {
         case Seq(a) => Some(a)
-        case _ => None
+        case _      => None
       }
       so = (serverlessOption in key).value
-      _ = keys.Invoke(so).invoke(stage).get
+      _  = keys.Invoke(so).invoke(stage).get
     } yield ()).getOrElse {
       sys.error("Error invoke. useage: invoke <stage>")
     }
   }
 
   def informationTask(key: InputKey[Unit]): Initialize[Task[Unit]] = Def.task {
-    val so = (serverlessOption in key).value
+    val so       = (serverlessOption in key).value
     val rootName = (name in key).value
 
     keys.Information(so, rootName).invoke.get
@@ -124,7 +127,7 @@ object Serverless {
     (for {
       deploymentId <- spaceDelimited("<deploymentId>").parsed match {
         case Seq(a) => Some(a)
-        case _ => None
+        case _      => None
       }
       so = (serverlessOption in key).value
       _ = aws.? {
@@ -139,10 +142,10 @@ object Serverless {
     (for {
       stage <- spaceDelimited("<stage>").parsed match {
         case Seq(a) => Some(a)
-        case _ => None
+        case _      => None
       }
       so = (serverlessOption in key).value
-      _ = keys.DeployStream(so).invoke(stage).get
+      _  = keys.DeployStream(so).invoke(stage).get
     } yield ()).getOrElse {
       sys.error("Error deployList. useage: deployList <stage>")
     }

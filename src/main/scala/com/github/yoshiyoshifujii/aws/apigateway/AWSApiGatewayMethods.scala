@@ -11,9 +11,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
   val path: Path
   val httpMethod: HttpMethod
 
-  def putIntegration(resourceId: ResourceId,
-                     uri: Uri,
-                     requestTemplates: RequestTemplates) = Try {
+  def putIntegration(resourceId: ResourceId, uri: Uri, requestTemplates: RequestTemplates) = Try {
     val request = new PutIntegrationRequest()
       .withRestApiId(restApiId)
       .withResourceId(resourceId)
@@ -71,9 +69,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
 
     if (responseParameters.nonEmpty)
       request.setResponseParameters(
-        responseParameters.map(
-          m => s"method.response.header.${m._1}" -> m._2)
-          .asJava)
+        responseParameters.map(m => s"method.response.header.${m._1}" -> m._2).asJava)
 
     if (responseTemplates.nonEmpty)
       request.setResponseTemplates(responseTemplates.asJava)
@@ -90,8 +86,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     client.deleteIntegrationResponse(request)
   }
 
-  def putIntegrationResponses(resourceId: ResourceId,
-                              responseTemplates: ResponseTemplates) = Try {
+  def putIntegrationResponses(resourceId: ResourceId, responseTemplates: ResponseTemplates) = Try {
 
     responseTemplates.values map { resT =>
       putIntegrationResponse(
@@ -113,15 +108,15 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
       .withHttpMethod(httpMethod)
       .withStatusCode(statusCode)
 
-    responseParameters.foreach { case (k,v) =>
-      request.addResponseParametersEntry(k, v)
+    responseParameters.foreach {
+      case (k, v) =>
+        request.addResponseParametersEntry(k, v)
     }
 
     client.putMethodResponse(request)
   }
 
-  def getMethodResponse(resourceId: ResourceId,
-                        statusCode: StatusCode) = Try {
+  def getMethodResponse(resourceId: ResourceId, statusCode: StatusCode) = Try {
     val request = new GetMethodResponseRequest()
       .withRestApiId(restApiId)
       .withResourceId(resourceId)
@@ -158,8 +153,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     toOpt(client.getMethod(request))
   }
 
-  def putMethod(resourceId: ResourceId,
-                getMethodResult: GetMethodResult) = Try {
+  def putMethod(resourceId: ResourceId, getMethodResult: GetMethodResult) = Try {
     val request = new PutMethodRequest()
       .withRestApiId(restApiId)
       .withResourceId(resourceId)
@@ -170,8 +164,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     client.putMethod(request)
   }
 
-  def updateMethod(resourceId: ResourceId,
-                   patchOperatios: (PatchPath, PatchValue)*) = Try {
+  def updateMethod(resourceId: ResourceId, patchOperatios: (PatchPath, PatchValue)*) = Try {
 
     val request = new UpdateMethodRequest()
       .withRestApiId(restApiId)
@@ -183,38 +176,37 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
   }
 
   def enableCORS(resourceId: ResourceId) = {
-    val om = AWSApiGatewayMethods(
-      regionName = this.regionName,
-      restApiId = this.restApiId,
-      path = this.path,
-      httpMethod = "OPTIONS")
+    val om = AWSApiGatewayMethods(regionName = this.regionName,
+                                  restApiId = this.restApiId,
+                                  path = this.path,
+                                  httpMethod = "OPTIONS")
     for {
-      methodOpt <- getMethod(resourceId)
+      methodOpt  <- getMethod(resourceId)
       optionsOpt <- om.getMethod(resourceId)
       _ <- Try {
         methodOpt foreach { method =>
-
           // add header
-          method.getMethodResponses
-            .asScala
-            .values
-            .map { mr =>
-              updateMethodResponse(
-                resourceId = resourceId,
-                statusCode = mr.getStatusCode,
-                ("/responseParameters/method.response.header.Access-Control-Allow-Origin", "true", Op.Add)
-              ).get
-            }
+          method.getMethodResponses.asScala.values.map { mr =>
+            updateMethodResponse(
+              resourceId = resourceId,
+              statusCode = mr.getStatusCode,
+              ("/responseParameters/method.response.header.Access-Control-Allow-Origin",
+               "true",
+               Op.Add)
+            ).get
+          }
 
           // add options
           if (optionsOpt.isEmpty) {
             (for {
               _ <- om.putMethod(resourceId, method)
-              _ <- om.putMethodResponse(resourceId, "200",
-                "method.response.header.Access-Control-Allow-Methods" -> false,
+              _ <- om.putMethodResponse(
+                resourceId,
+                "200",
+                "method.response.header.Access-Control-Allow-Methods"     -> false,
                 "method.response.header.Access-Control-Allow-Credentials" -> false,
-                "method.response.header.Access-Control-Allow-Origin" -> false,
-                "method.response.header.Access-Control-Allow-Headers" -> false
+                "method.response.header.Access-Control-Allow-Origin"      -> false,
+                "method.response.header.Access-Control-Allow-Headers"     -> false
               )
             } yield ()).get
           }
@@ -226,10 +218,10 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
               statusCode = "200",
               selectionPattern = None,
               responseParameters = Map(
-                "Access-Control-Allow-Methods" -> "'DELETE,GET,HEAD,PATCH,POST,PUT,OPTIONS'",
+                "Access-Control-Allow-Methods"     -> "'DELETE,GET,HEAD,PATCH,POST,PUT,OPTIONS'",
                 "Access-Control-Allow-Credentials" -> "'true'",
-                "Access-Control-Allow-Origin" -> "'*'",
-                "Access-Control-Allow-Headers" -> "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                "Access-Control-Allow-Origin"      -> "'*'",
+                "Access-Control-Allow-Headers"     -> "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
               ),
               responseTemplates = Map.empty
             )
@@ -289,15 +281,15 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     (path: PatchPath) =>
       (value: PatchValue) =>
         (op: Op) =>
-        new PatchOperation()
-          .withOp(op)
-          .withPath(path)
-          .withValue(value)
+          new PatchOperation()
+            .withOp(op)
+            .withPath(path)
+            .withValue(value)
 
 }
 
 case class AWSApiGatewayMethods(regionName: String,
                                 restApiId: RestApiId,
                                 path: Path,
-                                httpMethod: HttpMethod) extends AWSApiGatewayMethodsWrapper
-
+                                httpMethod: HttpMethod)
+    extends AWSApiGatewayMethodsWrapper
