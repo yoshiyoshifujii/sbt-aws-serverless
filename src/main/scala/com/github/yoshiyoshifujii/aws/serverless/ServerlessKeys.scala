@@ -33,6 +33,8 @@ trait ServerlessKeys {
 
   lazy val serverlessDeployStream =
     inputKey[Unit]("The deployStream task deploys the AWS Stream Event.")
+
+  lazy val serverlessClean = inputKey[Unit]("")
 }
 
 object ServerlessKeys extends ServerlessKeys
