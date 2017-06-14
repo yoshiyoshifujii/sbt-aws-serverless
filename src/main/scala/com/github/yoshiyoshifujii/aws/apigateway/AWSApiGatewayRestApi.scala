@@ -64,8 +64,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
     client.importRestApi(request)
   }
 
-  def export(restApiId: RestApiId,
-             stageName: StageName) = Try {
+  def export(restApiId: RestApiId, stageName: StageName) = Try {
     val request = new GetExportRequest()
       .withRestApiId(restApiId)
       .withStageName(stageName)
