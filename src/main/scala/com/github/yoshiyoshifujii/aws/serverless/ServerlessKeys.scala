@@ -31,8 +31,7 @@ trait ServerlessKeys {
     taskKey[Unit]("The remove task will remove the deployed service.")
 
   lazy val removeDeployment =
-    inputKey[Unit](
-      "The removeDeployment task will remove the API Gateway deployments.")
+    inputKey[Unit]("The removeDeployment task will remove the API Gateway deployments.")
 
   lazy val serverlessOption = taskKey[ServerlessOption]("")
 

@@ -168,6 +168,14 @@ trait AWSLambdaWrapper extends AWSWrapper {
     toOpt(client.getAlias(request))
   }
 
+  def deleteAlias(functionName: FunctionName, name: String) = Try {
+    val request = new DeleteAliasRequest()
+      .withFunctionName(functionName)
+      .withName(name)
+
+    client.deleteAlias(request)
+  }
+
   def createOrUpdateAlias(functionName: FunctionName,
                           name: String,
                           functionVersion: Option[String],
