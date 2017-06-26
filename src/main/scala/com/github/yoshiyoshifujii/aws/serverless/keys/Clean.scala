@@ -8,12 +8,16 @@ import com.amazonaws.services.apigateway.model.{
   GetStagesResult,
   Stage
 }
-import com.amazonaws.services.lambda.model.{AliasConfiguration, ListAliasesResult}
+import com.amazonaws.services.lambda.model.{
+  AliasConfiguration,
+  FunctionConfiguration,
+  ListAliasesResult
+}
 import com.github.yoshiyoshifujii.aws.apigateway.RestApiId
 import serverless.FunctionBase
 
 import scala.collection.JavaConverters._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 trait CleanBase extends KeysBase {
 
@@ -63,6 +67,28 @@ trait CleanBase extends KeysBase {
       }
     }.map(_.flatMap(_.functionAndAliases))
 
+  private def getStreamEventAliases: Try[Seq[FunctionAndAlias]] =
+    sequence {
+      so.functions.filteredStreamEvents map { func =>
+        lambda.listAliases(func.name).map(FunctionAndListAliasesResult(func, _))
+      }
+    }.map(_.flatMap(_.functionAndAliases))
+
+  private def getStreamEventVersions: Try[Seq[FunctionConfiguration]] =
+    sequence {
+      so.functions.filteredStreamEvents map { func =>
+        lambda.listVersionsByFunction(func.name)
+      }
+    }.map(_.flatMap(_.getVersions.asScala))
+
+  private def skip[E](t: Try[E]): Try[Unit] =
+    t match {
+      case Success(_) => Try()
+      case Failure(e) =>
+        println(e.getMessage)
+        Try()
+    }
+
   private def deleteAliases(exportFunctionArns: Seq[String],
                             aliases: Seq[FunctionAndAlias]): Try[Unit] = {
     val diff              = aliases.map(_.aliasArn) diff exportFunctionArns
@@ -71,9 +97,9 @@ trait CleanBase extends KeysBase {
     for {
       _ <- sequence {
         deletionCandidate map { d =>
-//          lambda.deleteAlias(d.name, d.aliasName)
-          println(d.name, d.aliasName)
-          Try()
+          skip {
+            lambda.deleteAlias(d.name, d.aliasName)
+          }
         }
       }
     } yield ()
@@ -92,9 +118,9 @@ trait CleanBase extends KeysBase {
           .distinct
           .sorted
           .map { arn =>
-//            lambda.delete(arn)
-            println(arn)
-            Try()
+            skip {
+              lambda.delete(arn)
+            }
           }
       }
     } yield ()
@@ -108,25 +134,50 @@ trait CleanBase extends KeysBase {
     for {
       _ <- sequence {
         unUsedDeploymentIds map { id =>
-//          api.deleteDeployment(restApiId, id)
-          println(restApiId, id)
-          Try()
+          skip {
+            api.deleteDeployment(restApiId, id)
+          }
         }
       }
     } yield ()
   }
 
+  private def cleanApi(restApiId: RestApiId) =
+    for {
+      stages             <- api.getStages(restApiId)
+      exportFunctionArns <- getFunctionArns(restApiId, stages)
+      aliases            <- getHttpEventAliases
+      _                  <- deleteAliases(exportFunctionArns, aliases)
+      _                  <- deletePublishes(exportFunctionArns, aliases)
+      deployments        <- api.getDeployments(restApiId)
+      _                  <- deleteDeployments(restApiId, stages, deployments)
+    } yield ()
+
+  def deleteNoUseVersion(versions: Seq[FunctionConfiguration], aliases: Seq[FunctionAndAlias]) =
+    Try {
+      val deletionCandidate = versions.map(_.getFunctionArn) diff aliases.map(_.publishedArn)
+      deletionCandidate map { arn =>
+        skip {
+          lambda.delete(arn)
+        }
+      }
+    }
+
+  private def cleanStream =
+    for {
+      aliases  <- getStreamEventAliases
+      versions <- getStreamEventVersions
+      _        <- deleteNoUseVersion(versions, aliases)
+    } yield ()
+
   def invoke: Try[Unit] =
     swap {
       so.restApiId map { restApiId =>
         for {
-          stages             <- api.getStages(restApiId)
-          exportFunctionArns <- getFunctionArns(restApiId, stages)
-          aliases            <- getHttpEventAliases
-          _                  <- deleteAliases(exportFunctionArns, aliases)
-          _                  <- deletePublishes(exportFunctionArns, aliases)
-          deployments        <- api.getDeployments(restApiId)
-          _                  <- deleteDeployments(restApiId, stages, deployments)
+          _ <- Try(println("clean api"))
+          _ <- cleanApi(restApiId)
+          _ <- Try(println("clean stream"))
+          _ <- cleanStream
         } yield {}
       }
     }.map(_ => ())
