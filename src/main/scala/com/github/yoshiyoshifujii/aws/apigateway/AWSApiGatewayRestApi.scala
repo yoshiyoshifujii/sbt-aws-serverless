@@ -64,6 +64,17 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
     client.importRestApi(request)
   }
 
+  def export(restApiId: RestApiId, stageName: StageName) = Try {
+    val request = new GetExportRequest()
+      .withRestApiId(restApiId)
+      .withStageName(stageName)
+      .withExportType("swagger")
+      .addParametersEntry("extensions", "integrations")
+      .withAccepts("application/json")
+
+    client.getExport(request)
+  }
+
   def put(restApiId: RestApiId, body: File, mode: PutMode, failOnWarnings: Option[Boolean]) = Try {
     val request = new PutRestApiRequest()
       .withRestApiId(restApiId)

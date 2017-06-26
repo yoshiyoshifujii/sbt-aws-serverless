@@ -27,7 +27,9 @@ object ServerlessPlugin extends AutoPlugin {
     description in deploy := description.value,
     version in deploy := version.value,
     serverlessOption in deploy := serverlessOption.value,
-    serverlessNoUploadMode in deploy := serverlessNoUploadMode.?.value.getOrElse(false),
-    serverlessDeployStream := Serverless.deployStreamTask(deploy).evaluated
+    serverlessNoUploadMode in deploy := serverlessNoUploadMode.?.value
+      .getOrElse(false),
+    serverlessDeployStream := Serverless.deployStreamTask(deploy).evaluated,
+    serverlessClean := Serverless.clean(deploy).value
   )
 }
