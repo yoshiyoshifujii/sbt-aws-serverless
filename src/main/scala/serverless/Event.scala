@@ -70,7 +70,15 @@ case class KinesisStreamEvent(name: String,
       .map(_.getStreamDescription.getStreamARN)
 
   override def printDescribe(regionName: String, stage: String) = Try {
-    AWSKinesis(regionName).printDescribeStream(appendToTheNameSuffix(stage))
+    val streamName = appendToTheNameSuffix(stage)
+    AWSKinesis(regionName).describeStream(streamName) map { s =>
+      println("KinesisStream:")
+      println("- " + s.getStreamDescription.getStreamName)
+      println("- " + s.getStreamDescription.getStreamStatus)
+      println("- " + s.getStreamDescription.getStreamARN)
+    } getOrElse {
+      s"Not exists. $streamName"
+    }
   }
 }
 
@@ -86,8 +94,16 @@ case class DynamoDBStreamEvent(name: String,
       .describeTable(appendToTheNameSuffix(stage))
       .map(_.getTable.getLatestStreamArn)
 
-  override def printDescribe(regionName: String, stage: String) = Try {
-    AWSDynamoDB(regionName).printTable(appendToTheNameSuffix(stage))
+  override def printDescribe(regionName: String, stage: String): Try[Unit] = Try {
+    val tableName = appendToTheNameSuffix(stage)
+    AWSDynamoDB(regionName).describeTable(tableName) map { t =>
+      println("DynamoDB:")
+      println("- " + t.getTable.getTableName)
+      println("- " + t.getTable.getTableStatus)
+      println("- " + t.getTable.getTableArn)
+    } getOrElse {
+      println(s"Not exists. $tableName")
+    }
   }
 }
 

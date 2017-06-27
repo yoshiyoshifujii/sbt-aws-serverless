@@ -5,43 +5,41 @@ import serverless.ServerlessOption
 
 trait ServerlessKeys {
 
-  lazy val deploy =
+  lazy val serverlessDeploy =
     inputKey[Unit]("The deploy task deploys the entire service.")
 
-  lazy val deployCopy =
-    inputKey[Unit]("The deployCopy task copy stage A to B.")
-
-  lazy val deployDev =
+  lazy val serverlessDeployDev =
     inputKey[Unit]("Deploy the deployDev task in development mode.")
 
-  lazy val deployFunction =
+  lazy val serverlessDeployFunction =
     inputKey[Unit]("The deployFunc task deploys the AWS Lambda Function.")
 
-  lazy val deployList =
+  lazy val serverlessDeployList =
     inputKey[Unit]("The deployList task will list your recent deployments.")
 
-  lazy val invoke = inputKey[Unit]("Invokes deployed function.")
+  lazy val serverlessInvoke = inputKey[Unit]("Invokes deployed function.")
 
-  lazy val logs = taskKey[Unit]("")
-
-  lazy val information =
+  lazy val serverlessInformation =
     taskKey[Unit]("Displays information about the deployed service.")
 
-  lazy val remove =
+  lazy val serverlessRemove =
     taskKey[Unit]("The remove task will remove the deployed service.")
 
-  lazy val removeDeployment =
+  lazy val serverlessRemoveStage = inputKey[Unit]("The removeStage task will remove the stage.")
+
+  lazy val serverlessRemoveDeployment =
     inputKey[Unit]("The removeDeployment task will remove the API Gateway deployments.")
+
+  lazy val serverlessDeployStream =
+    inputKey[Unit]("The deployStream task deploys the AWS Stream Event.")
+
+  lazy val serverlessClean = taskKey[Unit]("Clean up unnecessary deployments.")
 
   lazy val serverlessOption = taskKey[ServerlessOption]("")
 
   lazy val serverlessNoUploadMode =
     taskKey[Boolean]("If there is a Jar of the same name in S3, use it")
 
-  lazy val serverlessDeployStream =
-    inputKey[Unit]("The deployStream task deploys the AWS Stream Event.")
-
-  lazy val serverlessClean = taskKey[Unit]("Clean up unnecessary deployments.")
 }
 
 object ServerlessKeys extends ServerlessKeys
