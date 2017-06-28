@@ -120,13 +120,14 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
     client.createDeployment(request)
   }
 
-  def deleteDeployment(restApiId: RestApiId, deploymentId: DeploymentId) = Try {
-    val request = new DeleteDeploymentRequest()
-      .withRestApiId(restApiId)
-      .withDeploymentId(deploymentId)
+  def deleteDeployment(restApiId: RestApiId, deploymentId: DeploymentId) =
+    Try {
+      val request = new DeleteDeploymentRequest()
+        .withRestApiId(restApiId)
+        .withDeploymentId(deploymentId)
 
-    client.deleteDeployment(request)
-  }
+      client.deleteDeployment(request)
+    }
 
   def getDeployments(restApiId: RestApiId) = Try {
     val request = new GetDeploymentsRequest()
@@ -266,7 +267,8 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
 
   def printResources(restApiId: RestApiId) = {
     lazy val getResourceMethodKeys = (r: Resource) =>
-      Option(r.getResourceMethods) map (_.asScala.keys.mkString(",")) getOrElse ""
+      Option(r.getResourceMethods) map (_.asScala.keys
+        .mkString(",")) getOrElse ""
 
     for {
       l <- getResources(restApiId)

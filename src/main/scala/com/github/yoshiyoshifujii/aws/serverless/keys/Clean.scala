@@ -44,14 +44,18 @@ trait CleanBase extends KeysBase {
   private def getHttpEventAliases: Try[Seq[FunctionAndAlias]] =
     sequence {
       so.functions.filteredHttpEvents map { func =>
-        lambda.listAliases(func.name).map(FunctionAndListAliasesResult(func, _))
+        lambda
+          .listAliases(func.name)
+          .map(FunctionAndListAliasesResult(func, _))
       }
     }.map(_.flatMap(_.functionAndAliases))
 
   private def getStreamEventAliases: Try[Seq[FunctionAndAlias]] =
     sequence {
       so.functions.filteredStreamEvents map { func =>
-        lambda.listAliases(func.name).map(FunctionAndListAliasesResult(func, _))
+        lambda
+          .listAliases(func.name)
+          .map(FunctionAndListAliasesResult(func, _))
       }
     }.map(_.flatMap(_.functionAndAliases))
 
@@ -110,8 +114,9 @@ trait CleanBase extends KeysBase {
   private def deleteDeployments(restApiId: RestApiId,
                                 stages: GetStagesResult,
                                 deployments: GetDeploymentsResult): Try[Unit] = {
-    val usedDeploymentIds   = stages.getItem.asScala.map(_.getDeploymentId)
-    val unUsedDeploymentIds = deployments.getItems.asScala.map(_.getId) diff usedDeploymentIds
+    val usedDeploymentIds = stages.getItem.asScala.map(_.getDeploymentId)
+    val unUsedDeploymentIds = deployments.getItems.asScala
+      .map(_.getId) diff usedDeploymentIds
     for {
       _ <- sequence {
         unUsedDeploymentIds map { id =>

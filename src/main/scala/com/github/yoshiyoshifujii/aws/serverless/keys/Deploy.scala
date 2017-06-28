@@ -29,12 +29,12 @@ trait DeployBase
               _ <- ag.writeRestApiId(c.getId)
             } yield c.getId
           }
-          _ = { println(s"API Gateway created: $restApiId") }
+          _ = println(s"API Gateway created: $restApiId")
         } yield restApiId
       }
     }
 
-  private def putRestApi() =
+  private def putRestApi =
     swap {
       for {
         ag        <- so.apiGateway
@@ -47,7 +47,7 @@ trait DeployBase
             mode = PutMode.Merge,
             failOnWarnings = None
           )
-          _ = { println(s"API Gateway put: ${putRestApiResult.getId}") }
+          _ = println(s"API Gateway put: ${putRestApiResult.getId}")
         } yield putRestApiResult
     }
 
@@ -65,7 +65,7 @@ trait DeployBase
             description = version,
             variables = ag.getStageVariables(so.provider.region, stage)
           )
-          _ = { println(s"Create Deployment: ${createDeploymentResult.toString}") }
+          _ = println(s"Create Deployment: ${createDeploymentResult.toString}")
         } yield createDeploymentResult
     }
 
@@ -75,7 +75,7 @@ trait DeployBase
         functionName = function.name,
         description = version
       )
-      _ = { println(s"Lambda published: ${publishVersionResult.getFunctionArn}") }
+      _ = println(s"Lambda published: ${publishVersionResult.getFunctionArn}")
     } yield Option(publishVersionResult.getVersion)
 
   private def deployEvents(stage: String,
