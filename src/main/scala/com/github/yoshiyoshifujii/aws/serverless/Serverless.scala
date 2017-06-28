@@ -132,6 +132,22 @@ object Serverless {
     }
   }
 
+  def removeStageTask(key: InputKey[Unit]): Initialize[InputTask[Unit]] =
+    Def.inputTask {
+      (for {
+        stage <- spaceDelimited("<stage>").parsed match {
+          case Seq(a) => Some(a)
+          case _      => None
+        }
+        so = (serverlessOption in key).value
+        _ = aws.? {
+          keys.RemoveStage(so).invoke(stage).get
+        }
+      } yield ()).getOrElse {
+        sys.error("Error removeStage. useage: removeStage <stage>")
+      }
+    }
+
   def removeDeploymentTask(key: InputKey[Unit]): Initialize[InputTask[Unit]] =
     Def.inputTask {
       (for {

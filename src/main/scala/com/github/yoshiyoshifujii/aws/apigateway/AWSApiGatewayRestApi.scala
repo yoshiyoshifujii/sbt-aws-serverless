@@ -1,11 +1,11 @@
 package com.github.yoshiyoshifujii.aws.apigateway
 
 import java.io.File
+import java.nio.charset.StandardCharsets
 
 import com.amazonaws.services.apigateway.model._
 import com.github.yoshiyoshifujii.cliformatter.CliFormatter
 
-import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.util.Try
 
@@ -49,7 +49,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
         "Created Date"  -> 30,
         "Rest API Id"   -> 15,
         "Description"   -> 30
-      ).print4(l.getItems.sortBy(d => d.getName) map { d =>
+      ).print4(l.getItems.asScala.sortBy(d => d.getName) map { d =>
         (d.getName, d.getCreatedDate.toString, d.getId, d.getDescription)
       }: _*)
       println(p)
@@ -74,6 +74,26 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
 
     client.getExport(request)
   }
+
+  private def getFunctionArn(stageVariables: StageVariables,
+                             export: GetExportResult): Iterator[String] = {
+    val json   = new String(export.getBody.array, StandardCharsets.UTF_8)
+    val envOpt = stageVariables.get("env")
+    """"uri" : ".*/functions/(.*)/invocations"""".r.findAllMatchIn(json) map { m =>
+      envOpt map { env =>
+        m.group(1).replaceAll("\\$\\{stageVariables.env\\}", env)
+      } getOrElse {
+        m.group(1)
+      }
+    }
+  }
+
+  def exportFunctionArns(restApiId: RestApiId,
+                         stageName: String,
+                         stageVariables: StageVariables): Try[Iterator[String]] =
+    export(restApiId, stageName) map { export =>
+      getFunctionArn(stageVariables, export)
+    }
 
   def put(restApiId: RestApiId, body: File, mode: PutMode, failOnWarnings: Option[Boolean]) = Try {
     val request = new PutRestApiRequest()
@@ -124,7 +144,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
         "Created Date"  -> 30,
         "Deployment Id" -> 15,
         "Description"   -> 30
-      ).print3(l.getItems.sortBy(d => d.getCreatedDate.getTime).reverse map { d =>
+      ).print3(l.getItems.asScala.sortBy(d => d.getCreatedDate.getTime).reverse map { d =>
         (d.getCreatedDate.toString, d.getId, d.getDescription)
       }: _*)
       println(p)
@@ -134,7 +154,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
   def deleteDeployments(restApiId: RestApiId) =
     for {
       l <- getDeployments(restApiId)
-      _ <- Try(l.getItems foreach (i => deleteDeployment(restApiId, i.getId).get))
+      _ <- Try(l.getItems.asScala foreach (i => deleteDeployment(restApiId, i.getId).get))
     } yield l
 
   def createStage(restApiId: RestApiId,
@@ -190,7 +210,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
     for {
       sOp <- getStage(restApiId, stageName)
       res <- Try {
-        sOp map { s =>
+        sOp map { _ =>
           updateStage(
             restApiId = restApiId,
             stageName = stageName,
@@ -224,7 +244,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
         "Last Updated Date" -> 30,
         "Deployment Id"     -> 15,
         "Description"       -> 30
-      ).print4(l.getItem.map { s =>
+      ).print4(l.getItem.asScala.map { s =>
         (s.getStageName, s.getLastUpdatedDate.toString, s.getDeploymentId, s.getDescription)
       }: _*)
       println(p)
@@ -234,7 +254,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
   def deleteStages(restApiId: RestApiId) =
     for {
       l <- getStages(restApiId)
-      _ <- Try(l.getItem.foreach(i => deleteStage(restApiId, i.getStageName).get))
+      _ <- Try(l.getItem.asScala.foreach(i => deleteStage(restApiId, i.getStageName).get))
     } yield l
 
   def getResources(restApiId: RestApiId) = Try {
@@ -246,7 +266,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
 
   def printResources(restApiId: RestApiId) = {
     lazy val getResourceMethodKeys = (r: Resource) =>
-      Option(r.getResourceMethods) map (_.keys.mkString(",")) getOrElse ""
+      Option(r.getResourceMethods) map (_.asScala.keys.mkString(",")) getOrElse ""
 
     for {
       l <- getResources(restApiId)
@@ -256,7 +276,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
         "Resource Id"   -> 15,
         "Resource Path" -> 50,
         "Method Keys"   -> 30
-      ).print3(l.getItems.sortBy(r => r.getPath) map { r =>
+      ).print3(l.getItems.asScala.sortBy(r => r.getPath) map { r =>
         (r.getId, r.getPath, getResourceMethodKeys(r))
       }: _*)
       println(p)
@@ -274,11 +294,11 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
   def deleteResources(restApiId: RestApiId) = {
     for {
       l <- getResources(restApiId)
-      _ <- Try(l.getItems.filter(r => r.getPath != "/").foreach { r =>
+      _ <- Try(l.getItems.asScala.filter(r => r.getPath != "/").foreach { r =>
         try {
           deleteResource(restApiId, r.getId).get
         } catch {
-          case e: com.amazonaws.services.apigateway.model.NotFoundException =>
+          case _: com.amazonaws.services.apigateway.model.NotFoundException =>
         }
       })
     } yield l
@@ -300,7 +320,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
         "ID"   -> 15,
         "Name" -> 40,
         "URI"  -> 150
-      ).print3(l.getItems map { d =>
+      ).print3(l.getItems.asScala map { d =>
         (d.getId, d.getName, d.getAuthorizerUri)
       }: _*)
       println(p)

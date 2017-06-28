@@ -1,13 +1,6 @@
 package com.github.yoshiyoshifujii.aws.serverless.keys
 
-import java.nio.charset.StandardCharsets
-
-import com.amazonaws.services.apigateway.model.{
-  GetDeploymentsResult,
-  GetExportResult,
-  GetStagesResult,
-  Stage
-}
+import com.amazonaws.services.apigateway.model.{GetDeploymentsResult, GetStagesResult}
 import com.amazonaws.services.lambda.model.{
   AliasConfiguration,
   FunctionConfiguration,
@@ -21,24 +14,12 @@ import scala.util.{Failure, Success, Try}
 
 trait CleanBase extends KeysBase {
 
-  private def getFunctionArn(stage: Stage, export: GetExportResult): Iterator[String] = {
-    val json   = new String(export.getBody.array, StandardCharsets.UTF_8)
-    val envOpt = stage.getVariables.asScala.get("env")
-    """"uri" : ".*/functions/(.*)/invocations"""".r.findAllMatchIn(json) map { m =>
-      envOpt map { env =>
-        m.group(1).replaceAll("\\$\\{stageVariables.env\\}", env)
-      } getOrElse {
-        m.group(1)
-      }
-    }
-  }
-
   private def getFunctionArns(restApiId: RestApiId, stages: GetStagesResult): Try[Seq[String]] =
     sequence {
       stages.getItem.asScala map { stage =>
-        api.export(restApiId, stage.getStageName) map { export =>
-          getFunctionArn(stage, export)
-        }
+        val stageName      = stage.getStageName
+        val stageVariables = stage.getVariables.asScala.toMap
+        api.exportFunctionArns(restApiId, stageName, stageVariables)
       }
     }.map(_.flatten.distinct.sorted)
 
