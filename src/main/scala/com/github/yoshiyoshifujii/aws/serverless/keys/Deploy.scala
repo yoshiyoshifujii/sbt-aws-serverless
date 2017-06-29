@@ -44,7 +44,7 @@ trait DeployBase
           putRestApiResult <- api.put(
             restApiId = restApiId,
             body = ag.swagger,
-            mode = PutMode.Merge,
+            mode = PutMode.Overwrite,
             failOnWarnings = None
           )
           _ = println(s"API Gateway put: ${putRestApiResult.getId}")
