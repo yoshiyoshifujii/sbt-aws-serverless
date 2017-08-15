@@ -1,18 +1,7 @@
 package com.github.yoshiyoshifujii.aws.serverless.keys
 
-import java.nio.charset.StandardCharsets
-
-import com.amazonaws.services.apigateway.model.{
-  GetDeploymentsResult,
-  GetExportResult,
-  GetStagesResult,
-  Stage
-}
-import com.amazonaws.services.lambda.model.{
-  AliasConfiguration,
-  FunctionConfiguration,
-  ListAliasesResult
-}
+import com.amazonaws.services.apigateway.model.{GetDeploymentsResult, GetStagesResult}
+import com.amazonaws.services.lambda.model.{FunctionConfiguration, ListVersionsByFunctionResult}
 import com.github.yoshiyoshifujii.aws.apigateway.RestApiId
 import serverless.FunctionBase
 
@@ -21,64 +10,60 @@ import scala.util.{Failure, Success, Try}
 
 trait CleanBase extends KeysBase {
 
-  private def getFunctionArn(stage: Stage, export: GetExportResult): Iterator[String] = {
-    val json   = new String(export.getBody.array, StandardCharsets.UTF_8)
-    val envOpt = stage.getVariables.asScala.get("env")
-    """"uri" : ".*/functions/(.*)/invocations"""".r.findAllMatchIn(json) map { m =>
-      envOpt map { env =>
-        m.group(1).replaceAll("\\$\\{stageVariables.env\\}", env)
-      } getOrElse {
-        m.group(1)
-      }
-    }
-  }
-
   private def getFunctionArns(restApiId: RestApiId, stages: GetStagesResult): Try[Seq[String]] =
     sequence {
       stages.getItem.asScala map { stage =>
-        api.export(restApiId, stage.getStageName) map { export =>
-          getFunctionArn(stage, export)
-        }
+        val stageName      = stage.getStageName
+        val stageVariables = stage.getVariables.asScala.toMap
+        api.exportFunctionArns(restApiId, stageName, stageVariables)
       }
     }.map(_.flatten.distinct.sorted)
 
-  private case class FunctionAndAlias(private val functionBase: FunctionBase,
-                                      private val aliasConfiguration: AliasConfiguration) {
-    val name         = functionBase.name
-    val aliasName    = aliasConfiguration.getName
-    val aliasVersion = aliasConfiguration.getFunctionVersion
-    val aliasArn     = aliasConfiguration.getAliasArn
-    val publishedArn = lambda.generateLambdaArn(so.provider.awsAccount)(name)(Some(aliasVersion))
-  }
-
-  private case class FunctionAndListAliasesResult(
+  private case class FunctionAndPublished(
       private val functionBase: FunctionBase,
-      private val listAliasesResult: ListAliasesResult) {
-    val functionAndAliases =
-      listAliasesResult.getAliases.asScala map { b =>
-        FunctionAndAlias(functionBase, b)
+      private val functionConfiguration: FunctionConfiguration) {
+    val name         = functionConfiguration.getFunctionName
+    val aliasVersion = functionConfiguration.getVersion
+    val publishedArn = functionConfiguration.getFunctionArn
+  }
+
+  private case class FunctionAndListVersionsResult(
+      private val functionBase: FunctionBase,
+      private val listVersionsByFunctionResult: ListVersionsByFunctionResult) {
+    val functionAndPublished =
+      listVersionsByFunctionResult.getVersions.asScala map {
+        FunctionAndPublished(functionBase, _)
       }
   }
 
-  private def getHttpEventAliases: Try[Seq[FunctionAndAlias]] =
+  private def getHttpEventPublishes(stages: GetStagesResult): Try[Seq[FunctionAndPublished]] =
     sequence {
-      so.functions.filteredHttpEvents map { func =>
-        lambda.listAliases(func.name).map(FunctionAndListAliasesResult(func, _))
-      }
-    }.map(_.flatMap(_.functionAndAliases))
+      for {
+        stage <- stages.getItem.asScala.map(_.getStageName)
+        func  <- so.functions.filteredHttpEvents
+      } yield
+        lambda
+          .listVersionsByFunction(func.nameWith(stage))
+          .map(FunctionAndListVersionsResult(func, _))
+    }.map(_.flatMap(_.functionAndPublished))
 
-  private def getStreamEventAliases: Try[Seq[FunctionAndAlias]] =
+  private def getStreamEventPublishes(stages: GetStagesResult): Try[Seq[FunctionAndPublished]] =
     sequence {
-      so.functions.filteredStreamEvents map { func =>
-        lambda.listAliases(func.name).map(FunctionAndListAliasesResult(func, _))
-      }
-    }.map(_.flatMap(_.functionAndAliases))
+      for {
+        stage <- stages.getItem.asScala.map(_.getStageName)
+        func  <- so.functions.filteredStreamEvents
+      } yield
+        lambda
+          .listVersionsByFunction(func.nameWith(stage))
+          .map(FunctionAndListVersionsResult(func, _))
+    }.map(_.flatMap(_.functionAndPublished))
 
-  private def getStreamEventVersions: Try[Seq[FunctionConfiguration]] =
+  private def getStreamEventVersions(stages: GetStagesResult): Try[Seq[FunctionConfiguration]] =
     sequence {
-      so.functions.filteredStreamEvents map { func =>
-        lambda.listVersionsByFunction(func.name)
-      }
+      for {
+        stage <- stages.getItem.asScala.map(_.getStageName)
+        func  <- so.functions.filteredStreamEvents
+      } yield lambda.listVersionsByFunction(func.nameWith(stage))
     }.map(_.flatMap(_.getVersions.asScala))
 
   private def skip[E](t: Try[E]): Try[Unit] =
@@ -89,27 +74,11 @@ trait CleanBase extends KeysBase {
         Try()
     }
 
-  private def deleteAliases(exportFunctionArns: Seq[String],
-                            aliases: Seq[FunctionAndAlias]): Try[Unit] = {
-    val diff              = aliases.map(_.aliasArn) diff exportFunctionArns
-    val aliasMap          = aliases.map(a => a.aliasArn -> a).toMap
-    val deletionCandidate = diff flatMap aliasMap.get
-    for {
-      _ <- sequence {
-        deletionCandidate map { d =>
-          skip {
-            lambda.deleteAlias(d.name, d.aliasName)
-          }
-        }
-      }
-    } yield ()
-  }
-
   private def deletePublishes(exportFunctionArns: Seq[String],
-                              aliases: Seq[FunctionAndAlias]): Try[Unit] = {
-    val aliasMap          = aliases.map(a => a.aliasArn -> a).toMap
-    val notDeletion       = exportFunctionArns flatMap aliasMap.get
-    val deletionCandidate = aliases diff notDeletion
+                              publishes: Seq[FunctionAndPublished]): Try[Unit] = {
+    val publishedMap      = publishes.map(a => a.publishedArn -> a).toMap
+    val notDeletion       = exportFunctionArns flatMap publishedMap.get
+    val deletionCandidate = publishes diff notDeletion
     for {
       _ <- sequence {
         deletionCandidate
@@ -129,8 +98,9 @@ trait CleanBase extends KeysBase {
   private def deleteDeployments(restApiId: RestApiId,
                                 stages: GetStagesResult,
                                 deployments: GetDeploymentsResult): Try[Unit] = {
-    val usedDeploymentIds   = stages.getItem.asScala.map(_.getDeploymentId)
-    val unUsedDeploymentIds = deployments.getItems.asScala.map(_.getId) diff usedDeploymentIds
+    val usedDeploymentIds = stages.getItem.asScala.map(_.getDeploymentId)
+    val unUsedDeploymentIds = deployments.getItems.asScala
+      .map(_.getId) diff usedDeploymentIds
     for {
       _ <- sequence {
         unUsedDeploymentIds map { id =>
@@ -142,18 +112,17 @@ trait CleanBase extends KeysBase {
     } yield ()
   }
 
-  private def cleanApi(restApiId: RestApiId) =
+  private def cleanApi(restApiId: RestApiId, stages: GetStagesResult) =
     for {
-      stages             <- api.getStages(restApiId)
       exportFunctionArns <- getFunctionArns(restApiId, stages)
-      aliases            <- getHttpEventAliases
-      _                  <- deleteAliases(exportFunctionArns, aliases)
+      aliases            <- getHttpEventPublishes(stages)
       _                  <- deletePublishes(exportFunctionArns, aliases)
       deployments        <- api.getDeployments(restApiId)
       _                  <- deleteDeployments(restApiId, stages, deployments)
     } yield ()
 
-  def deleteNoUseVersion(versions: Seq[FunctionConfiguration], aliases: Seq[FunctionAndAlias]) =
+  def deleteNoUseVersion(versions: Seq[FunctionConfiguration],
+                         aliases: Seq[FunctionAndPublished]) =
     Try {
       val deletionCandidate = versions.map(_.getFunctionArn) diff aliases.map(_.publishedArn)
       deletionCandidate map { arn =>
@@ -163,10 +132,10 @@ trait CleanBase extends KeysBase {
       }
     }
 
-  private def cleanStream =
+  private def cleanStream(stages: GetStagesResult) =
     for {
-      aliases  <- getStreamEventAliases
-      versions <- getStreamEventVersions
+      aliases  <- getStreamEventPublishes(stages)
+      versions <- getStreamEventVersions(stages)
       _        <- deleteNoUseVersion(versions, aliases)
     } yield ()
 
@@ -174,10 +143,11 @@ trait CleanBase extends KeysBase {
     swap {
       so.restApiId map { restApiId =>
         for {
-          _ <- Try(println("clean api"))
-          _ <- cleanApi(restApiId)
-          _ <- Try(println("clean stream"))
-          _ <- cleanStream
+          stages <- api.getStages(restApiId)
+          _      <- Try(println("clean api"))
+          _      <- cleanApi(restApiId, stages)
+          _      <- Try(println("clean stream"))
+          _      <- cleanStream(stages)
         } yield {}
       }
     }.map(_ => ())

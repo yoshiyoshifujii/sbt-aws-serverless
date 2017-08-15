@@ -12,7 +12,8 @@ trait DeployResource extends KeysBase {
 
   protected def deployResource(restApiId: RestApiId,
                                function: FunctionBase,
-                               lambdaAlias: Option[String],
+                               lambdaSuffix: String,
+                               publishedVersion: Option[String],
                                httpEvent: HttpEvent) = {
     val method = AWSApiGatewayMethods(regionName = so.provider.region,
                                       restApiId = restApiId,
@@ -22,8 +23,8 @@ trait DeployResource extends KeysBase {
     for {
       resourceOpt <- method.deploy(
         awsAccountId = so.provider.awsAccount,
-        lambdaName = function.name,
-        lambdaAlias = lambdaAlias,
+        lambdaName = function.nameWith(lambdaSuffix),
+        lambdaAlias = publishedVersion,
         requestTemplates = RequestTemplates(httpEvent.request.templateToSeq: _*),
         responseTemplates = httpEvent.response.templates,
         withAuth = withAuth(method)(AWSApiGatewayAuthorize(so.provider.region, restApiId))(

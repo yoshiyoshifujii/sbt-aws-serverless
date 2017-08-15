@@ -10,7 +10,7 @@ trait Event
 
 case class HttpEvent(path: String,
                      method: String,
-                     uriLambdaAlias: Option[String] = Some("${stageVariables.env}"),
+                     uriLambdaSuffix: Option[String] = Some("${stageVariables.env}"),
                      cors: Boolean = false,
                      `private`: Boolean = false,
                      authorizerName: Option[String] = None,
@@ -36,7 +36,7 @@ object HttpEvent {
 }
 
 case class AuthorizeEvent(name: String,
-                          uriLambdaAlias: Option[String] = Some("${stageVariables.env}"),
+                          uriLambdaSuffix: Option[String] = Some("${stageVariables.env}"),
                           resultTtlInSeconds: Int = 1800,
                           identitySourceHeaderName: String = "Authorization",
                           identityValidationExpression: Option[String] = None)
@@ -70,7 +70,15 @@ case class KinesisStreamEvent(name: String,
       .map(_.getStreamDescription.getStreamARN)
 
   override def printDescribe(regionName: String, stage: String) = Try {
-    AWSKinesis(regionName).printDescribeStream(appendToTheNameSuffix(stage))
+    val streamName = appendToTheNameSuffix(stage)
+    AWSKinesis(regionName).describeStream(streamName) map { s =>
+      println("KinesisStream:")
+      println("- " + s.getStreamDescription.getStreamName)
+      println("- " + s.getStreamDescription.getStreamStatus)
+      println("- " + s.getStreamDescription.getStreamARN)
+    } getOrElse {
+      s"Not exists. $streamName"
+    }
   }
 }
 
@@ -86,8 +94,16 @@ case class DynamoDBStreamEvent(name: String,
       .describeTable(appendToTheNameSuffix(stage))
       .map(_.getTable.getLatestStreamArn)
 
-  override def printDescribe(regionName: String, stage: String) = Try {
-    AWSDynamoDB(regionName).printTable(appendToTheNameSuffix(stage))
+  override def printDescribe(regionName: String, stage: String): Try[Unit] = Try {
+    val tableName = appendToTheNameSuffix(stage)
+    AWSDynamoDB(regionName).describeTable(tableName) map { t =>
+      println("DynamoDB:")
+      println("- " + t.getTable.getTableName)
+      println("- " + t.getTable.getTableStatus)
+      println("- " + t.getTable.getTableArn)
+    } getOrElse {
+      println(s"Not exists. $tableName")
+    }
   }
 }
 
@@ -135,19 +151,14 @@ case class Events(events: Event*) {
 
   def streamEventsMap[B](f: StreamEvent => B): Seq[B] = streamEvents map f
 
-  lazy val hasHttpEvent: Boolean = httpEvents.nonEmpty
-
+  lazy val hasHttpEvent: Boolean      = httpEvents.nonEmpty
   lazy val hasAuthorizeEvent: Boolean = authorizeEvents.nonEmpty
+  lazy val hasStreamEvent: Boolean    = streamEvents.nonEmpty
 
-  lazy val hasStreamEvent: Boolean = streamEvents.nonEmpty
-
-  def ifHasHttpEventDo[A](f: () => A): Option[() => A] = if (hasHttpEvent) Some(f) else None
-
+  def ifHasHttpEventDo[A](f: () => A): Option[() => A]    = if (hasHttpEvent) Some(f) else None
   def ifHasNotHttpEventDo[A](f: () => A): Option[() => A] = if (!hasHttpEvent) Some(f) else None
-
   def ifHasAuthorizeEventDo[A](f: () => A): Option[() => A] =
     if (hasAuthorizeEvent) Some(f) else None
-
   def ifHasStreamEventDo[A](f: () => A): Option[() => A] = if (hasStreamEvent) Some(f) else None
 }
 

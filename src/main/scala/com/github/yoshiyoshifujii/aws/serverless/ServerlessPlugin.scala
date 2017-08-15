@@ -14,22 +14,36 @@ object ServerlessPlugin extends AutoPlugin {
   override def projectSettings: Seq[Def.Setting[_]] = serverlessSettings
 
   lazy val serverlessSettings: Seq[Def.Setting[_]] = Seq(
-    deploy := Serverless.deployTask(deploy).evaluated,
-    deployCopy := Serverless.deployCopyTask(deploy).evaluated,
-    deployDev := Serverless.deployDevTask(deploy).evaluated,
-    deployFunction := Serverless.deployFunctionTask(deploy).evaluated,
-    deployList := Serverless.deployListTask(deploy).evaluated,
-    invoke := Serverless.invokeTask(deploy).evaluated,
-    information := Serverless.informationTask(deploy).value,
-    remove := Serverless.removeTask(deploy).value,
-    removeDeployment := Serverless.removeDeploymentTask(deploy).evaluated,
-    name in deploy := name.value,
-    description in deploy := description.value,
-    version in deploy := version.value,
-    serverlessOption in deploy := serverlessOption.value,
-    serverlessNoUploadMode in deploy := serverlessNoUploadMode.?.value
+    serverlessDeploy := Serverless.deployTask(serverlessDeploy).evaluated,
+    serverlessDeployDev := Serverless
+      .deployDevTask(serverlessDeploy)
+      .evaluated,
+    serverlessDeployFunction := Serverless
+      .deployFunctionTask(serverlessDeploy)
+      .evaluated,
+    serverlessDeployList := Serverless
+      .deployListTask(serverlessDeploy)
+      .evaluated,
+    serverlessInvoke := Serverless.invokeTask(serverlessDeploy).evaluated,
+    serverlessInformation := Serverless
+      .informationTask(serverlessDeploy)
+      .value,
+    serverlessRemove := Serverless.removeTask(serverlessDeploy).value,
+    serverlessRemoveStage := Serverless
+      .removeStageTask(serverlessDeploy)
+      .evaluated,
+    serverlessRemoveDeployment := Serverless
+      .removeDeploymentTask(serverlessDeploy)
+      .evaluated,
+    name in serverlessDeploy := name.value,
+    description in serverlessDeploy := description.value,
+    version in serverlessDeploy := version.value,
+    serverlessOption in serverlessDeploy := serverlessOption.value,
+    serverlessNoUploadMode in serverlessDeploy := serverlessNoUploadMode.?.value
       .getOrElse(false),
-    serverlessDeployStream := Serverless.deployStreamTask(deploy).evaluated,
-    serverlessClean := Serverless.clean(deploy).value
+    serverlessDeployStream := Serverless
+      .deployStreamTask(serverlessDeploy)
+      .evaluated,
+    serverlessClean := Serverless.clean(serverlessDeploy).value
   )
 }

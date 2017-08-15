@@ -34,12 +34,15 @@ package object serverless {
   }
 
   sealed trait FunctionBase {
-    val name: String
+    protected val name: String
     val events: Events
+
+    def nameWith(stage: String): String           = s"$name-$stage"
+    def equalsName(functionName: String): Boolean = name == functionName
   }
 
   case class Function(filePath: File,
-                      name: String,
+                      protected val name: String,
                       description: Option[String] = None,
                       handler: String,
                       memorySize: Int = 512,
@@ -50,15 +53,11 @@ package object serverless {
                       events: Events = Events.empty)
       extends FunctionBase {
 
-    lazy val getEnvironment: String => Map[String, String] =
-      (stage: String) =>
-        if (environment.isEmpty)
-          Map("stage" -> stage)
-        else
-        environment
+    def getEnvironment(stage: String): Map[String, String] =
+      if (environment.isEmpty) Map("stage" -> stage) else environment
   }
 
-  case class NotDeployLambdaFunction(name: String,
+  case class NotDeployLambdaFunction(protected val name: String,
                                      publishedVersion: Option[String] = None,
                                      events: Events = Events.empty)
       extends FunctionBase
@@ -66,12 +65,8 @@ package object serverless {
   case class Functions(private val functions: FunctionBase*) {
 
     private lazy val sortedFunctions = functions.sortWith { (a, b) =>
-      {
-        a.events.hasAuthorizeEvent.compareTo(b.events.hasAuthorizeEvent) > 0
-      }
+      a.events.hasAuthorizeEvent.compareTo(b.events.hasAuthorizeEvent) > 0
     }
-
-    def map[B](f: FunctionBase => B) = sortedFunctions.map(f)
 
     def notExistsFilePathFunctions =
       for {
@@ -82,11 +77,10 @@ package object serverless {
         }
       } yield fb
 
-    def find(functionName: String) = functions.find(f => f.name == functionName)
-
-    lazy val filteredHttpEvents = functions.filter(_.events.hasHttpEvent)
-
-    lazy val filteredStreamEvents = functions.filter(_.events.hasStreamEvent)
+    def map[B](f: FunctionBase => B) = sortedFunctions.map(f)
+    def find(functionName: String)   = functions.find(_.equalsName(functionName))
+    lazy val filteredHttpEvents      = functions.filter(_.events.hasHttpEvent)
+    lazy val filteredStreamEvents    = functions.filter(_.events.hasStreamEvent)
   }
 
   case class ServerlessOption(provider: Provider,

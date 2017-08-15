@@ -12,7 +12,7 @@ trait DeployFunctionBase extends KeysBase {
 
   private lazy val s3 = new AWSS3(so.provider.region)
 
-  def invoke(function: Function, stage: Option[String]): Try[String] = {
+  def invoke(function: Function, stage: String): Try[String] = {
 
     val putS3: (String, File) => Try[String] =
       if (noUploadMode) s3.putIfDoesNotObjectExist else s3.put
@@ -23,7 +23,7 @@ trait DeployFunctionBase extends KeysBase {
         function.filePath
       )
       arn <- lambda.deploy(
-        functionName = function.name,
+        functionName = function.nameWith(stage),
         role = function.role,
         handler = function.handler,
         bucketName = so.provider.deploymentBucket,
@@ -31,7 +31,7 @@ trait DeployFunctionBase extends KeysBase {
         description = function.description,
         timeout = Option(function.timeout),
         memorySize = Option(function.memorySize),
-        environment = stage.map(function.getEnvironment(_)).orElse(Some(function.environment)),
+        environment = Option(function.getEnvironment(stage)),
         tracingMode = function.tracing.map(_.value),
         createAfter = arn => lambda.addPermission(arn)
       )

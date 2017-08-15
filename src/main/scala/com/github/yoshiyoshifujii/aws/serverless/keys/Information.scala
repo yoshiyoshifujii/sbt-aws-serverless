@@ -27,7 +27,7 @@ trait InformationBase extends KeysBase {
       s"  ${httpEvent.method} - $url"
     }
 
-    val functions = so.functions.map(f => s"  ${f.name}")
+    val functions = so.functions.map(f => s"  ${f.nameWith("stage")}")
 
     println(s"""Service Information
                |service: $rootName

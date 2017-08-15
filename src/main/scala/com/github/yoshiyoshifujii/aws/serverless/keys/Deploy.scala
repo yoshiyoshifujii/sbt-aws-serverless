@@ -1,18 +1,20 @@
 package com.github.yoshiyoshifujii.aws.serverless.keys
 
 import com.amazonaws.services.apigateway.model.PutMode
+import com.github.yoshiyoshifujii.aws.lambda.FunctionArn
 import serverless.{Function => ServerlessFunction, _}
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 trait DeployBase
     extends DeployFunctionBase
-    with DeployAlias
     with DeployResource
     with DeployAuthorizer
     with DeployStreamBase {
   val name: String
   val description: Option[String]
+  val version: Option[String]
+  private[keys] type PublishedVersion = Option[String]
 
   private def getOrCreateRestApi =
     swap {
@@ -29,12 +31,12 @@ trait DeployBase
               _ <- ag.writeRestApiId(c.getId)
             } yield c.getId
           }
-          _ = { println(s"API Gateway created: $restApiId") }
+          _ = println(s"API Gateway created: $restApiId")
         } yield restApiId
       }
     }
 
-  private def putRestApi() =
+  private def putRestApi =
     swap {
       for {
         ag        <- so.apiGateway
@@ -47,7 +49,7 @@ trait DeployBase
             mode = PutMode.Overwrite,
             failOnWarnings = None
           )
-          _ = { println(s"API Gateway put: ${putRestApiResult.getId}") }
+          _ = println(s"API Gateway put: ${putRestApiResult.getId}")
         } yield putRestApiResult
     }
 
@@ -65,17 +67,25 @@ trait DeployBase
             description = version,
             variables = ag.getStageVariables(so.provider.region, stage)
           )
-          _ = { println(s"Create Deployment: ${createDeploymentResult.toString}") }
+          _ = println(s"Create Deployment: ${createDeploymentResult.toString}")
         } yield createDeploymentResult
     }
 
-  protected def publishVersion(function: ServerlessFunction) =
+  private def addPermission(functionArn: FunctionArn): Try[Unit] =
+    lambda.addPermission(functionArn) match {
+      case Failure(_: com.amazonaws.services.lambda.model.ResourceConflictException) => Success()
+      case Failure(e)                                                                => Failure(e)
+      case Success(_)                                                                => Success()
+    }
+
+  protected def publishVersion(function: ServerlessFunction, stage: String) =
     for {
       publishVersionResult <- lambda.publishVersion(
-        functionName = function.name,
+        functionName = function.nameWith(stage),
         description = version
       )
-      _ = { println(s"Lambda published: ${publishVersionResult.getFunctionArn}") }
+      _ <- addPermission(publishVersionResult.getFunctionArn)
+      _ = println(s"Lambda published: ${publishVersionResult.getFunctionArn}")
     } yield Option(publishVersionResult.getVersion)
 
   private def deployEvents(stage: String,
@@ -89,8 +99,8 @@ trait DeployBase
               deployResource(
                 restApiId = restApiId,
                 function = function,
-                lambdaAlias =
-                  httpEvent.uriLambdaAlias.map(a => generateLambdaAlias(a, publishedVersion)),
+                lambdaSuffix = httpEvent.uriLambdaSuffix.getOrElse(stage),
+                publishedVersion = publishedVersion,
                 httpEvent = httpEvent
               )
             }
@@ -104,7 +114,7 @@ trait DeployBase
               deployAuthorizer(
                 restApiId = restApiId,
                 function = function,
-                lambdaAlias = authorizeEvent.uriLambdaAlias,
+                lambdaSuffix = authorizeEvent.uriLambdaSuffix.getOrElse(stage),
                 authorizeEvent = authorizeEvent
               )
             }
@@ -127,13 +137,8 @@ trait DeployBase
       so.functions.map {
         case (function: ServerlessFunction) =>
           for {
-            _                <- invoke(function, Some(stage))
-            publishedVersion <- publishVersion(function)
-            _ <- deployAlias(
-              stage = stage,
-              function = function,
-              publishedVersion = publishedVersion
-            )
+            _                <- invoke(function, stage)
+            publishedVersion <- publishVersion(function, stage)
             _ <- deployEvents(
               stage = stage,
               function = function,
@@ -151,18 +156,18 @@ trait DeployBase
       }
     }
 
-  private def validateFunctions: Try[Unit] = Try {
+  private def validateFunctions(stage: String): Try[Unit] = Try {
     val notExistsFunction = so.functions.notExistsFilePathFunctions
     if (notExistsFunction.nonEmpty) {
       throw new RuntimeException(
-        s"Not Exists Function file path.\n${notExistsFunction.map(_.name).mkString("\n")}")
+        s"Not Exists Function file path.\n${notExistsFunction.map(_.nameWith(stage)).mkString("\n")}")
     }
   }
 
   def invoke(stage: String): Try[Unit] =
     for {
-      _ <- validateFunctions
-      a <- getOrCreateRestApi
+      _ <- validateFunctions(stage)
+      _ <- getOrCreateRestApi
       _ <- putRestApi
       _ <- invokeFunctions(stage)
       _ <- createDeployment(stage)

@@ -6,11 +6,8 @@ import scala.util.Try
 
 trait DeployDevBase extends DeployBase {
 
-  override protected def publishVersion(function: ServerlessFunction) =
+  override protected def publishVersion(function: ServerlessFunction, stage: String) =
     Try(None)
-
-  override protected def generateFunctionVersion(publishedVersion: PublishedVersion) =
-    Some("$LATEST")
 
 }
 
