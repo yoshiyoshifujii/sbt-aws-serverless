@@ -7,7 +7,7 @@ sbt plugin to deploy code to Amazon API Gateway and AWS Lambda
 Add the following to your `project/plugins.sbt` file:
 
 ```sbt
-addSbtPlugin("com.github.yoshiyoshifujii" % "sbt-aws-serverless" % "2.8.0")
+addSbtPlugin("com.github.yoshiyoshifujii" % "sbt-aws-serverless" % "3.0.0")
 ```
 
 Add the `ServerlessPlugin` auto-plugin to your build.sbt:
@@ -18,23 +18,23 @@ enablePlugins(ServerlessPlugin)
 
 ## Usage
 
-`sbt deploy <stage>` deploys the entire service.
+`sbt serverlessDeploy <stage>` deploys the entire service.
 
-`sbt deployCopy <from stage> <to stage>` The deployCopy task copy stage A to B.
+`sbt serverlessDeployDev <stage>` Deploy the deployDev task in development mode.
 
-`sbt deployDev <stage>` Deploy the deployDev task in development mode.
+`sbt serverlessDeployFunction <functionName> <stage>` The deployFunc task deploys the AWS Lambda Function.
 
-`sbt deployFunction <functionName> [stage]` The deployFunc task deploys the AWS Lambda Function.
+`sbt serverlessDeployList <stage>` The deployList task will list your recent deployments.
 
-`sbt deployList <stage>` The deployList task will list your recent deployments.
+`sbt serverlessInvoke <stage>` Invokes deployed function.
 
-`sbt invoke <stage>` Invokes deployed function.
+`sbt serverlessInformation` Displays information about the deployed service.
 
-`sbt information` Displays information about the deployed service.
+`sbt serverlessRemove` The remove task will remove the deployed service.
 
-`sbt remove <stage>` The remove task will remove the deployed service.
+`sbt serverlessRemoveStage <stage>` The removeStage task will remove the stage.
 
-`sbt removeDeployment <deploymentId>` remove the API Gateway deployments.
+`sbt serverlessRemoveDeployment <deploymentId>` remove the API Gateway deployments.
 
 `sbt serverlessDeployStream <stage>` The deployStream task deploys the AWS Stream Event.
 
