@@ -21,7 +21,7 @@ trait DeployListBase extends KeysBase {
 
   def invoke(stage: String): Try[Unit] = {
     lazy val generateArn: String => String =
-      (fName) => lambda.generateLambdaArn(so.provider.awsAccount)(fName)(Some(stage))
+      lambda.generateLambdaArn(so.provider.awsAccount)
 
     for {
       _ <- swap {
@@ -49,20 +49,16 @@ trait DeployListBase extends KeysBase {
       _ <- sequence {
         so.functions.map { f =>
           for {
-            aliases  <- lambda.listAliases(f.name)
-            versions <- lambda.listVersionsByFunction(f.name)
+            versions <- lambda.listVersionsByFunction(f.nameWith(stage))
           } yield {
-            val versionMap = versions.getVersions.asScala.map(i => i.getVersion -> i).toMap
-            aliases.getAliases.asScala.filter(_.getName.contains(stage)).foreach { a =>
-              val v = versionMap.get(a.getFunctionVersion)
+            versions.getVersions.asScala.foreach { a =>
               doPrint(
                 "Lambda",
-                f.name,
-                a.getName,
-                a.getFunctionVersion,
+                a.getFunctionName,
                 a.getDescription,
-                v.map(_.getLastModified),
-                v.map(_.getCodeSize)
+                a.getVersion,
+                a.getLastModified,
+                a.getCodeSize
               )
             }
           }
@@ -75,10 +71,10 @@ trait DeployListBase extends KeysBase {
         } yield
           for {
             _            <- s.printDescribe(so.provider.region, stage)
-            eventSources <- lambda.listEventSourceMappings(generateArn(f.name))
+            eventSources <- lambda.listEventSourceMappings(generateArn(f.nameWith(stage)))
             oldEventSources <- sequence {
               s.oldFunctions map { of =>
-                lambda.listEventSourceMappings(generateArn(of.name))
+                lambda.listEventSourceMappings(generateArn(of.nameWith(stage)))
               }
             }.map(_.flatMap(_.getEventSourceMappings.asScala))
           } yield {

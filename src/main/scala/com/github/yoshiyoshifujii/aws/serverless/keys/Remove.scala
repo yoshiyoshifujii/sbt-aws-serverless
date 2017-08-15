@@ -18,11 +18,6 @@ trait RemoveBase extends KeysBase {
             _ <- ag.deleteRestApiId()
           } yield ()
       }
-      _ <- sequence {
-        so.functions.map { f =>
-          lambda.delete(f.name)
-        }
-      }
     } yield ()
   }
 

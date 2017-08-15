@@ -27,13 +27,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
 
   lazy val generateLambdaArn =
     (awsAccount: String) =>
-      (lambdaName: String) =>
-        (lambdaAlias: Option[String]) =>
-          lambdaAlias map { alias =>
-            s"arn:aws:lambda:$regionName:$awsAccount:function:$lambdaName:$alias"
-          } getOrElse {
-            s"arn:aws:lambda:$regionName:$awsAccount:function:$lambdaName"
-    }
+      (lambdaName: String) => s"arn:aws:lambda:$regionName:$awsAccount:function:$lambdaName"
 
   def create(functionName: FunctionName,
              role: Role,
@@ -134,61 +128,6 @@ trait AWSLambdaWrapper extends AWSWrapper {
     client.publishVersion(request)
   }
 
-  def createAlias(functionName: FunctionName,
-                  name: String,
-                  functionVersion: Option[String],
-                  description: Option[Description]) = Try {
-    val request = new CreateAliasRequest()
-      .withFunctionName(functionName)
-      .withName(name)
-      .withFunctionVersion(functionVersion.getOrElse("$LATEST"))
-    description.foreach(request.setDescription)
-
-    client.createAlias(request)
-  }
-
-  def updateAlias(functionName: FunctionName,
-                  name: String,
-                  functionVersion: Option[String],
-                  description: Option[Description]) = Try {
-    val request = new UpdateAliasRequest()
-      .withFunctionName(functionName)
-      .withName(name)
-      .withFunctionVersion(functionVersion.getOrElse("$LATEST"))
-    description.foreach(request.setDescription)
-
-    client.updateAlias(request)
-  }
-
-  def getAlias(functionName: FunctionName, name: String) = Try {
-    val request = new GetAliasRequest()
-      .withFunctionName(functionName)
-      .withName(name)
-
-    toOpt(client.getAlias(request))
-  }
-
-  def deleteAlias(functionName: FunctionName, name: String) = Try {
-    val request = new DeleteAliasRequest()
-      .withFunctionName(functionName)
-      .withName(name)
-
-    client.deleteAlias(request)
-  }
-
-  def createOrUpdateAlias(functionName: FunctionName,
-                          name: String,
-                          functionVersion: Option[String],
-                          description: Option[Description]) =
-    for {
-      aliasOpt <- getAlias(functionName, name)
-      aliasArn <- aliasOpt map { _ =>
-        updateAlias(functionName, name, functionVersion, description).map(_.getAliasArn)
-      } getOrElse {
-        createAlias(functionName, name, functionVersion, description).map(_.getAliasArn)
-      }
-    } yield aliasArn
-
   def listVersionsByFunction(functionName: FunctionName) = Try {
     val request = new ListVersionsByFunctionRequest()
       .withFunctionName(functionName)
@@ -207,28 +146,6 @@ trait AWSLambdaWrapper extends AWSWrapper {
         "Description"   -> 45
       ).print3(l.getVersions.asScala.map { v =>
         (v.getLastModified, v.getVersion, v.getDescription)
-      }: _*)
-      println(p)
-    }
-
-  def listAliases(functionName: FunctionName) = Try {
-    val request = new ListAliasesRequest()
-      .withFunctionName(functionName)
-
-    client.listAliases(request)
-  }
-
-  def printListAliases(functionName: FunctionName) =
-    for {
-      l <- listAliases(functionName)
-    } yield {
-      val p = CliFormatter(
-        functionName,
-        "Alias name"  -> 20,
-        "Ver"         -> 12,
-        "Description" -> 45
-      ).print3(l.getAliases.asScala.map { a =>
-        (findAlias(a.getAliasArn), a.getFunctionVersion, a.getDescription)
       }: _*)
       println(p)
     }

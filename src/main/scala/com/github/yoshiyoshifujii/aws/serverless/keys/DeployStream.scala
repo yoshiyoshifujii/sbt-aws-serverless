@@ -6,25 +6,26 @@ import scala.util.Try
 
 trait DeployStreamBase extends KeysBase {
 
-  private lazy val delete: (Seq[FunctionBase]) => ((String) => String) => Try[Seq[_]] =
-    (oldFunctions: Seq[FunctionBase]) =>
-      (generateArn: String => String) =>
-        sequence {
-          oldFunctions map { f =>
-            val arn = generateArn(f.name)
-            lambda.deleteEventSourceMappings(arn)
-          }
+  private lazy val delete: (String) => (Seq[FunctionBase]) => ((String) => String) => Try[Seq[_]] =
+    (stage: String) =>
+      (oldFunctions: Seq[FunctionBase]) =>
+        (generateArn: String => String) =>
+          sequence {
+            oldFunctions map { f =>
+              val arn = generateArn(f.nameWith(stage))
+              lambda.deleteEventSourceMappings(arn)
+            }
     }
 
   protected def deployStream(stage: String, function: FunctionBase, streamEvent: StreamEvent) = {
     lazy val generateArn: String => String =
-      (functionName) => lambda.generateLambdaArn(so.provider.awsAccount)(functionName)(Some(stage))
+      lambda.generateLambdaArn(so.provider.awsAccount)
 
-    val functionArn = generateArn(function.name)
+    val functionArn = generateArn(function.nameWith(stage))
 
     for {
       _              <- lambda.deleteEventSourceMappings(functionArn)
-      _              <- delete(streamEvent.oldFunctions)(generateArn)
+      _              <- delete(stage)(streamEvent.oldFunctions)(generateArn)
       eventSourceArn <- streamEvent.getArn(so.provider.region, stage)
       c <- lambda.createEventSourceMapping(
         functionArn = functionArn,

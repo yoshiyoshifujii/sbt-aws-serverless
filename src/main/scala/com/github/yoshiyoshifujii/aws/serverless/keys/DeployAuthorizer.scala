@@ -7,7 +7,7 @@ trait DeployAuthorizer extends KeysBase {
 
   protected def deployAuthorizer(restApiId: RestApiId,
                                  function: FunctionBase,
-                                 lambdaAlias: Option[String],
+                                 lambdaSuffix: String,
                                  authorizeEvent: AuthorizeEvent) = {
     lazy val authorize = AWSApiGatewayAuthorize(
       so.provider.region,
@@ -17,8 +17,8 @@ trait DeployAuthorizer extends KeysBase {
       authId <- authorize.deployAuthorizer(
         name = authorizeEvent.name,
         awsAccountId = so.provider.awsAccount,
-        lambdaName = function.name,
-        lambdaAlias = lambdaAlias,
+        lambdaName = function.nameWith(lambdaSuffix),
+        lambdaAlias = None,
         identitySourceHeaderName = authorizeEvent.identitySourceHeaderName,
         identityValidationExpression = authorizeEvent.identityValidationExpression,
         authorizerResultTtlInSeconds = Option(authorizeEvent.resultTtlInSeconds)

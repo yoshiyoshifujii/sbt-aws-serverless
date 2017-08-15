@@ -27,22 +27,7 @@ object Serverless {
           .invoke(stage)
           .get
       } yield ()).getOrElse {
-        sys.error("Error deploy. useage: deploy <stage>")
-      }
-    }
-
-  def deployCopyTask(key: InputKey[Unit]): Initialize[InputTask[Unit]] =
-    Def.inputTask {
-      (for {
-        (from, to) <- spaceDelimited("<from stage> <to stage>").parsed match {
-          case Seq(a, b) => Some(a -> b)
-          case _         => None
-        }
-        so          = (serverlessOption in key).value
-        rootVersion = (version in key).?.value
-        _           = keys.DeployCopy(so, rootVersion).invoke(from, to).get
-      } yield ()).getOrElse {
-        sys.error("Error deployCopy. useage: deployCopy <from stage> <to stage>")
+        sys.error("Error serverlessDeploy. useage: serverlessDeploy <stage>")
       }
     }
 
@@ -63,16 +48,15 @@ object Serverless {
           .invoke(stage)
           .get
       } yield ()).getOrElse {
-        sys.error("Error deploy. useage: deploy <stage>")
+        sys.error("Error serverlessDeploy. useage: serverlessDeploy <stage>")
       }
     }
 
   def deployFunctionTask(key: InputKey[Unit]): Initialize[InputTask[Unit]] =
     Def.inputTask {
       (for {
-        (functionName, stageOpt) <- spaceDelimited("<functionName> [stage]").parsed match {
-          case Seq(a, b) => Some(a -> Some(b))
-          case Seq(a)    => Some(a -> None)
+        (functionName, stage) <- spaceDelimited("<functionName> <stage>").parsed match {
+          case Seq(a, b) => Some(a -> b)
           case _         => None
         }
         so           = (serverlessOption in key).value
@@ -80,12 +64,13 @@ object Serverless {
         function <- so.functions.find(functionName)
         _ = function match {
           case f: serverless.Function =>
-            keys.DeployFunction(so, noUploadMode).invoke(f, stageOpt).get
+            keys.DeployFunction(so, noUploadMode).invoke(f, stage).get
           case _ =>
             ""
         }
       } yield ()).getOrElse {
-        sys.error("Error deployFunction. useage: deployFunction <functionName>")
+        sys.error(
+          "Error serverlessDeployFunction. useage: serverlessDeployFunction <functionName> <stage>")
       }
     }
 
@@ -99,7 +84,7 @@ object Serverless {
         so = (serverlessOption in key).value
         _  = keys.DeployList(so).invoke(stage).get
       } yield ()).getOrElse {
-        sys.error("Error deployList. useage: deployList <stage>")
+        sys.error("Error serverlessDeployList. useage: serverlessDeployList <stage>")
       }
     }
 
@@ -113,7 +98,7 @@ object Serverless {
         so = (serverlessOption in key).value
         _  = keys.Invoke(so).invoke(stage).get
       } yield ()).getOrElse {
-        sys.error("Error invoke. useage: invoke <stage>")
+        sys.error("Error serverlessInvoke. useage: serverlessInvoke <stage>")
       }
     }
 
@@ -144,7 +129,7 @@ object Serverless {
           keys.RemoveStage(so).invoke(stage).get
         }
       } yield ()).getOrElse {
-        sys.error("Error removeStage. useage: removeStage <stage>")
+        sys.error("Error serverlessRemoveStage. useage: serverlessRemoveStage <stage>")
       }
     }
 
@@ -160,7 +145,8 @@ object Serverless {
           keys.RemoveDeployment(so).invoke(deploymentId).get
         }
       } yield ()).getOrElse {
-        sys.error("Error removeDeployment. useage: removeDeployment <deploymentId>")
+        sys.error(
+          "Error serverlessRemoveDeployment. useage: serverlessRemoveDeployment <deploymentId>")
       }
     }
 
@@ -174,7 +160,7 @@ object Serverless {
         so = (serverlessOption in key).value
         _  = keys.DeployStream(so).invoke(stage).get
       } yield ()).getOrElse {
-        sys.error("Error deployList. useage: deployList <stage>")
+        sys.error("Error serverlessDeployList. useage: serverlessDeployList <stage>")
       }
     }
 
