@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets
 import com.amazonaws.services.apigateway.model._
 import com.github.yoshiyoshifujii.cliformatter.CliFormatter
 
+import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.util.Try
 
@@ -258,11 +259,27 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
       _ <- Try(l.getItem.asScala.foreach(i => deleteStage(restApiId, i.getStageName).get))
     } yield l
 
-  def getResources(restApiId: RestApiId) = Try {
+  @tailrec
+  private def getAllResources(restApiId: RestApiId,
+                              position: Option[String],
+                              resources: Seq[Resource]): Seq[Resource] =
+    position match {
+      case Some(p) =>
+        val request = new GetResourcesRequest().withRestApiId(restApiId).withPosition(p)
+        val result  = client.getResources(request)
+        val items   = result.getItems.asScala
+        getAllResources(restApiId, Option(result.getPosition), resources ++ items)
+
+      case _ => resources
+    }
+
+  def getResources(restApiId: RestApiId): Try[Seq[Resource]] = Try {
     val request = new GetResourcesRequest()
       .withRestApiId(restApiId)
 
-    client.getResources(request)
+    val result = client.getResources(request)
+    val items  = result.getItems.asScala
+    getAllResources(restApiId, Option(result.getPosition), items)
   }
 
   def printResources(restApiId: RestApiId) = {
@@ -278,7 +295,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
         "Resource Id"   -> 15,
         "Resource Path" -> 50,
         "Method Keys"   -> 30
-      ).print3(l.getItems.asScala.sortBy(r => r.getPath) map { r =>
+      ).print3(l.sortBy(_.getPath) map { r =>
         (r.getId, r.getPath, getResourceMethodKeys(r))
       }: _*)
       println(p)
@@ -296,7 +313,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
   def deleteResources(restApiId: RestApiId) = {
     for {
       l <- getResources(restApiId)
-      _ <- Try(l.getItems.asScala.filter(r => r.getPath != "/").foreach { r =>
+      _ <- Try(l.filter(_.getPath != "/").foreach { r =>
         try {
           deleteResource(restApiId, r.getId).get
         } catch {

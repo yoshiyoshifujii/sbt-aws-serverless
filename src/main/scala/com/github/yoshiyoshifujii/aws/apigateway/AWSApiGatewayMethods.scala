@@ -142,7 +142,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
   def getResource =
     for {
       resources <- getResources(restApiId)
-    } yield resources.getItems.find(_.getPath == path)
+    } yield resources.find(_.getPath == path)
 
   def getMethod(resourceId: ResourceId) = Try {
     val request = new GetMethodRequest()
