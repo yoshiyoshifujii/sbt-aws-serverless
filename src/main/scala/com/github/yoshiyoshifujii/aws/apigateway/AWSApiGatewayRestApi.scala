@@ -241,9 +241,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
   @tailrec
   private def getAllResources(restApiId: RestApiId,
                               position: Option[String],
-                              resources: Seq[Resource]): Seq[Resource] = {
-    import scala.collection.JavaConverters._
-
+                              resources: Seq[Resource]): Seq[Resource] =
     position match {
       case Some(p) =>
         val request = new GetResourcesRequest().withRestApiId(restApiId).withPosition(p)
@@ -254,11 +252,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
       case _ => resources
     }
 
-  }
-
   def getResources(restApiId: RestApiId): Try[Seq[Resource]] = Try {
-    import scala.collection.JavaConverters._
-
     val request = new GetResourcesRequest()
       .withRestApiId(restApiId)
 
@@ -279,7 +273,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
         "Resource Id"   -> 15,
         "Resource Path" -> 50,
         "Method Keys"   -> 30
-      ).print3(l.sortBy(r => r.getPath) map { r =>
+      ).print3(l.sortBy(_.getPath) map { r =>
         (r.getId, r.getPath, getResourceMethodKeys(r))
       }: _*)
       println(p)
@@ -297,7 +291,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
   def deleteResources(restApiId: RestApiId) = {
     for {
       l <- getResources(restApiId)
-      _ <- Try(l.filter(r => r.getPath != "/").foreach { r =>
+      _ <- Try(l.filter(_.getPath != "/").foreach { r =>
         try {
           deleteResource(restApiId, r.getId).get
         } catch {
