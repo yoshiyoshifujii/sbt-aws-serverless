@@ -44,6 +44,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
              timeout: Option[Timeout],
              memorySize: Option[MemorySize],
              environment: Option[Map[String, String]],
+             tags: Option[Map[String, String]],
              tracingMode: Option[TracingMode]) = {
     val code = new FunctionCode()
       .withS3Bucket(bucketName)
@@ -60,6 +61,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
         timeout.foreach(request.setTimeout(_))
         memorySize.foreach(request.setMemorySize(_))
         environment.foreach(e => request.setEnvironment(new Environment().withVariables(e.asJava)))
+        tags.foreach(t => request.setTags(t.asJava))
         tracingMode.foreach(m => request.setTracingConfig(new TracingConfig().withMode(m)))
 
         client.createFunction(request)
@@ -107,6 +109,14 @@ trait AWSLambdaWrapper extends AWSWrapper {
     tracingMode.foreach(m => request.setTracingConfig(new TracingConfig().withMode(m)))
 
     client.updateFunctionConfiguration(request)
+  }
+
+  def tagResource(functionArn: FunctionArn, tags: Map[String, String]) = Try {
+    val request = new TagResourceRequest()
+      .withResource(functionArn)
+      .withTags(tags.asJava)
+
+    client.tagResource(request)
   }
 
   def delete(functionName: FunctionName) = Try {
@@ -242,6 +252,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
              timeout: Option[Timeout],
              memorySize: Option[MemorySize],
              environment: Option[Map[String, String]],
+             tags: Option[Map[String, String]],
              tracingMode: Option[TracingMode],
              createAfter: FunctionArn => Try[Any] = _ => Try()) = {
     for {
@@ -259,6 +270,9 @@ trait AWSLambdaWrapper extends AWSWrapper {
             environment = environment,
             tracingMode = tracingMode
           )
+          _ <- tags map { t =>
+            tagResource(uc.getFunctionArn, t)
+          } getOrElse Try()
         } yield uc.getFunctionArn
       } getOrElse {
         for {
@@ -272,6 +286,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
             timeout = timeout,
             memorySize = memorySize,
             environment = environment,
+            tags = tags,
             tracingMode = tracingMode
           )
           _ <- createAfter(c.getFunctionArn)

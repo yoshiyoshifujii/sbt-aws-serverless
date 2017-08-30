@@ -46,6 +46,7 @@ package object serverless {
                       timeout: Int = 10,
                       role: String,
                       environment: Map[String, String] = Map.empty,
+                      tags: Map[String, String] = Map.empty,
                       tracing: Option[Tracing] = None,
                       events: Events = Events.empty)
       extends FunctionBase {
