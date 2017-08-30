@@ -7,7 +7,7 @@ sbt plugin to deploy code to Amazon API Gateway and AWS Lambda
 Add the following to your `project/plugins.sbt` file:
 
 ```sbt
-addSbtPlugin("com.github.yoshiyoshifujii" % "sbt-aws-serverless" % "3.0.0")
+addSbtPlugin("com.github.yoshiyoshifujii" % "sbt-aws-serverless" % "3.0.1")
 ```
 
 Add the `ServerlessPlugin` auto-plugin to your build.sbt:

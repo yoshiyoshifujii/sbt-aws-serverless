@@ -32,6 +32,7 @@ trait DeployFunctionBase extends KeysBase {
         timeout = Option(function.timeout),
         memorySize = Option(function.memorySize),
         environment = Option(function.getEnvironment(stage)),
+        tags = Option(function.tags),
         tracingMode = function.tracing.map(_.value),
         createAfter = arn => lambda.addPermission(arn)
       )
