@@ -70,7 +70,7 @@ object Serverless {
         }
       } yield ()).getOrElse {
         sys.error(
-          "Error serverlessDeployFunction. useage: serverlessDeployFunction <functionName> <stage>")
+          "Error serverlessDeployFunction. usage: serverlessDeployFunction <functionName> <stage>")
       }
     }
 
@@ -84,7 +84,7 @@ object Serverless {
         so = (serverlessOption in key).value
         _  = keys.DeployList(so).invoke(stage).get
       } yield ()).getOrElse {
-        sys.error("Error serverlessDeployList. useage: serverlessDeployList <stage>")
+        sys.error("Error serverlessDeployList. usage: serverlessDeployList <stage>")
       }
     }
 
@@ -98,7 +98,7 @@ object Serverless {
         so = (serverlessOption in key).value
         _  = keys.Invoke(so).invoke(stage).get
       } yield ()).getOrElse {
-        sys.error("Error serverlessInvoke. useage: serverlessInvoke <stage>")
+        sys.error("Error serverlessInvoke. usage: serverlessInvoke <stage>")
       }
     }
 
@@ -129,7 +129,7 @@ object Serverless {
           keys.RemoveStage(so).invoke(stage).get
         }
       } yield ()).getOrElse {
-        sys.error("Error serverlessRemoveStage. useage: serverlessRemoveStage <stage>")
+        sys.error("Error serverlessRemoveStage. usage: serverlessRemoveStage <stage>")
       }
     }
 
@@ -146,7 +146,7 @@ object Serverless {
         }
       } yield ()).getOrElse {
         sys.error(
-          "Error serverlessRemoveDeployment. useage: serverlessRemoveDeployment <deploymentId>")
+          "Error serverlessRemoveDeployment. usage: serverlessRemoveDeployment <deploymentId>")
       }
     }
 
@@ -160,7 +160,7 @@ object Serverless {
         so = (serverlessOption in key).value
         _  = keys.DeployStream(so).invoke(stage).get
       } yield ()).getOrElse {
-        sys.error("Error serverlessDeployList. useage: serverlessDeployList <stage>")
+        sys.error("Error serverlessDeployList. usage: serverlessDeployList <stage>")
       }
     }
 
