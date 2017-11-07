@@ -55,7 +55,7 @@ package object serverless {
       extends FunctionBase {
 
     def getEnvironment(stage: String): Map[String, String] =
-      if (environment.isEmpty) Map("stage" -> stage) else environment
+      if (environment.isEmpty) Map("stage" -> stage) else environment + ("stage" -> stage)
   }
 
   case class NotDeployLambdaFunction(protected val name: String,
