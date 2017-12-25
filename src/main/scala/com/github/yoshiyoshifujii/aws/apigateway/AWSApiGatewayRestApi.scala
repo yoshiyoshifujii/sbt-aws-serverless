@@ -130,11 +130,26 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
       client.deleteDeployment(request)
     }
 
-  def getDeployments(restApiId: RestApiId) = Try {
+  @tailrec
+  private def getAllDeployments(restApiId: RestApiId,
+                                position: Option[String],
+                                deployments: Seq[Deployment]): Seq[Deployment] =
+    position match {
+      case Some(p) =>
+        val request = new GetDeploymentsRequest().withRestApiId(restApiId).withPosition(p)
+        val result  = client.getDeployments(request)
+        val items   = result.getItems.asScala
+        getAllDeployments(restApiId, Option(result.getPosition), deployments ++ items)
+      case _ => deployments
+    }
+
+  def getDeployments(restApiId: RestApiId): Try[Seq[Deployment]] = Try {
     val request = new GetDeploymentsRequest()
       .withRestApiId(restApiId)
 
-    client.getDeployments(request)
+    val result = client.getDeployments(request)
+    val items  = result.getItems.asScala
+    getAllDeployments(restApiId, Option(result.getPosition), items)
   }
 
   def printDeployments(restApiId: RestApiId) = {
@@ -146,7 +161,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
         "Created Date"  -> 30,
         "Deployment Id" -> 15,
         "Description"   -> 30
-      ).print3(l.getItems.asScala.sortBy(d => d.getCreatedDate.getTime).reverse map { d =>
+      ).print3(l.sortBy(d => d.getCreatedDate.getTime).reverse map { d =>
         (d.getCreatedDate.toString, d.getId, d.getDescription)
       }: _*)
       println(p)
@@ -156,7 +171,7 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
   def deleteDeployments(restApiId: RestApiId) =
     for {
       l <- getDeployments(restApiId)
-      _ <- Try(l.getItems.asScala foreach (i => deleteDeployment(restApiId, i.getId).get))
+      _ <- Try(l foreach (i => deleteDeployment(restApiId, i.getId).get))
     } yield l
 
   def createStage(restApiId: RestApiId,
