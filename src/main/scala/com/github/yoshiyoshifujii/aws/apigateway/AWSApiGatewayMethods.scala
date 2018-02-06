@@ -8,6 +8,7 @@ import scala.util.Try
 
 trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
   val restApiId: RestApiId
+  val integrationType: IntegrationType
   val path: Path
   val httpMethod: HttpMethod
 
@@ -16,7 +17,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
       .withRestApiId(restApiId)
       .withResourceId(resourceId)
       .withHttpMethod(httpMethod)
-      .withType(IntegrationType.AWS)
+      .withType(integrationType)
       .withIntegrationHttpMethod("POST")
       .withUri(uri.value)
       .withRequestTemplates(requestTemplates.toMap)
@@ -178,6 +179,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
   def enableCORS(resourceId: ResourceId) = {
     val om = AWSApiGatewayMethods(regionName = this.regionName,
                                   restApiId = this.restApiId,
+                                  integrationType = this.integrationType,
                                   path = this.path,
                                   httpMethod = "OPTIONS")
     for {
@@ -290,6 +292,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
 
 case class AWSApiGatewayMethods(regionName: String,
                                 restApiId: RestApiId,
+                                integrationType: IntegrationType,
                                 path: Path,
                                 httpMethod: HttpMethod)
     extends AWSApiGatewayMethodsWrapper
