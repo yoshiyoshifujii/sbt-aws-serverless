@@ -11,6 +11,7 @@ trait Event
 case class HttpEvent(path: String,
                      method: String,
                      uriLambdaSuffix: Option[String] = Some("${stageVariables.env}"),
+                     proxyIntegration: Boolean = false,
                      cors: Boolean = false,
                      `private`: Boolean = false,
                      authorizerName: Option[String] = None,
