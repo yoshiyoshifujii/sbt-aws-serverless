@@ -73,6 +73,7 @@ serverlessOption := {
             path: String,
             method: String,
             uriLambdaAlias: String = "${stageVariables.env}",
+            proxyIntegration: Boolean = false,
             cors: Boolean = false,
             `private`: Boolean = false,
             authorizerName: Option[String] = None,
@@ -185,6 +186,7 @@ lazy val root = (project in file(".")).
               HttpEvent(
                 path = "/hellos",
                 method = "GET",
+                proxyIntegration = false,
                 cors = true,
                 authorizerName = (name in auth).value,
                 invokeInput = HttpInvokeInput(
