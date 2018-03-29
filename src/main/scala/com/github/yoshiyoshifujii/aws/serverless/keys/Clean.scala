@@ -1,6 +1,6 @@
 package com.github.yoshiyoshifujii.aws.serverless.keys
 
-import com.amazonaws.services.apigateway.model.{Deployment, GetDeploymentsResult, GetStagesResult}
+import com.amazonaws.services.apigateway.model.{Deployment, GetStagesResult}
 import com.amazonaws.services.lambda.model.{FunctionConfiguration, ListVersionsByFunctionResult}
 import com.github.yoshiyoshifujii.aws.apigateway.RestApiId
 import serverless.FunctionBase

@@ -73,9 +73,9 @@ trait DeployBase
 
   private def addPermission(functionArn: FunctionArn): Try[Unit] =
     lambda.addPermission(functionArn) match {
-      case Failure(_: com.amazonaws.services.lambda.model.ResourceConflictException) => Success()
+      case Failure(_: com.amazonaws.services.lambda.model.ResourceConflictException) => Success(())
       case Failure(e)                                                                => Failure(e)
-      case Success(_)                                                                => Success()
+      case Success(_)                                                                => Success(())
     }
 
   protected def publishVersion(function: ServerlessFunction, stage: String) =

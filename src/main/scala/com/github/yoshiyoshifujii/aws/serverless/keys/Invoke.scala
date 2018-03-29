@@ -47,7 +47,7 @@ trait InvokeBase extends KeysBase {
                  |${s.getStatusCode}
                  |${out.toString("utf-8")}
            """.stripMargin)
-          }) getOrElse ()
+          }) getOrElse (())
         }
       }
     }

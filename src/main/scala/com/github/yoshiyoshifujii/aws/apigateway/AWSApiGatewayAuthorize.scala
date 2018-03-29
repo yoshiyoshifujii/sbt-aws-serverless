@@ -2,7 +2,6 @@ package com.github.yoshiyoshifujii.aws.apigateway
 
 import com.amazonaws.services.apigateway.model._
 
-import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.util.Try
 
@@ -30,7 +29,7 @@ trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayRestApiWrapper {
   def getAuthorizer(name: String) =
     for {
       as <- getAuthorizers(restApiId)
-    } yield as.getItems.find(a => a.getName == name)
+    } yield as.getItems.asScala.find(a => a.getName == name)
 
   def updateAuthorizer(authorizerId: AuthorizerId,
                        name: String,
