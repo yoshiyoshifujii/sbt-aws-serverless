@@ -76,10 +76,10 @@ trait CleanBase extends KeysBase {
 
   private def skip[E](t: Try[E]): Try[Unit] =
     t match {
-      case Success(_) => Try()
+      case Success(_) => Try(())
       case Failure(e) =>
         println(e.getMessage)
-        Try()
+        Try(())
     }
 
   private def deletePublishes(exportFunctionArns: Seq[String],
@@ -128,8 +128,7 @@ trait CleanBase extends KeysBase {
       _                  <- deleteDeployments(restApiId, stages, deployments)
     } yield ()
 
-  def deleteNoUseVersion(versions: Seq[FunctionConfiguration],
-                         aliases: Seq[FunctionAndPublished]) =
+  def deleteNoUseVersion(versions: Seq[FunctionConfiguration], aliases: Seq[FunctionAndPublished]) =
     Try {
       val deletionCandidate = versions.map(_.getFunctionArn) diff aliases.map(_.publishedArn)
       deletionCandidate map { arn =>

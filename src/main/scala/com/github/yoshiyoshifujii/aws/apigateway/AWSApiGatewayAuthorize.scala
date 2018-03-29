@@ -72,7 +72,7 @@ trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayRestApiWrapper {
                        identitySourceHeaderName: String,
                        identityValidationExpression: Option[String],
                        authorizerResultTtlInSeconds: Option[Int] = Some(300)) = {
-    val authorizerUri = Uri(
+    val _authorizerUri = Uri(
       regionName = regionName,
       awsAccountId = awsAccountId,
       lambdaName = lambdaName,
@@ -84,7 +84,7 @@ trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayRestApiWrapper {
         updateAuthorizer(
           authorizerId = a.getId,
           name = name,
-          authorizerUri = authorizerUri,
+          authorizerUri = _authorizerUri,
           identitySourceHeaderName = identitySourceHeaderName,
           identityValidationExpression = identityValidationExpression,
           authorizerResultTtlInSeconds = authorizerResultTtlInSeconds
@@ -92,7 +92,7 @@ trait AWSApiGatewayAuthorizeWrapper extends AWSApiGatewayRestApiWrapper {
       } getOrElse {
         createAuthorizer(
           name = name,
-          authorizerUri = authorizerUri,
+          authorizerUri = _authorizerUri,
           identitySourceHeaderName = identitySourceHeaderName,
           identityValidationExpression = identityValidationExpression,
           authorizerResultTtlInSeconds = authorizerResultTtlInSeconds

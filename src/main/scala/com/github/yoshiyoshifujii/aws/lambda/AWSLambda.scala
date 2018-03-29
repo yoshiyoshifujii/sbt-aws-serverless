@@ -171,7 +171,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
              environment: Option[Map[String, String]],
              tags: Option[Map[String, String]],
              tracingMode: Option[TracingMode],
-             createAfter: FunctionArn => Try[Any] = _ => Try()) = {
+             createAfter: FunctionArn => Try[Any] = _ => Try(())) = {
     for {
       gfr <- get(functionName)
       arn <- gfr map { _ =>
@@ -189,7 +189,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
           )
           _ <- tags map { t =>
             tagResource(uc.getFunctionArn, t)
-          } getOrElse Try()
+          } getOrElse Try(())
         } yield uc.getFunctionArn
       } getOrElse {
         for {
@@ -235,12 +235,12 @@ trait AWSLambdaWrapper extends AWSWrapper {
       println(p)
     }
 
-  def createEventSourceMapping(functionArn: FunctionArn,
-                               eventSourceArn: EventSourceArn,
-                               enabled: Boolean = true,
-                               batchSize: Int = 100,
-                               startPosition: EventSourcePosition =
-                                 EventSourcePosition.TRIM_HORIZON) = Try {
+  def createEventSourceMapping(
+      functionArn: FunctionArn,
+      eventSourceArn: EventSourceArn,
+      enabled: Boolean = true,
+      batchSize: Int = 100,
+      startPosition: EventSourcePosition = EventSourcePosition.TRIM_HORIZON) = Try {
     val request = new CreateEventSourceMappingRequest()
       .withEventSourceArn(eventSourceArn)
       .withFunctionName(functionArn)

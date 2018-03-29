@@ -2,7 +2,6 @@ package com.github.yoshiyoshifujii.aws.apigateway
 
 import com.amazonaws.services.apigateway.model._
 
-import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.util.Try
 
@@ -20,7 +19,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
       .withType(integrationType)
       .withIntegrationHttpMethod("POST")
       .withUri(uri.value)
-      .withRequestTemplates(requestTemplates.toMap)
+      .withRequestTemplates(requestTemplates.toMap.asJava)
       .withPassthroughBehavior("WHEN_NO_TEMPLATES")
 
     client.putIntegration(request)
@@ -238,7 +237,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
              lambdaAlias: Option[String],
              requestTemplates: RequestTemplates,
              responseTemplates: ResponseTemplates,
-             withAuth: ResourceId => Try[Unit] = resourceId => Try(),
+             withAuth: ResourceId => Try[Unit] = resourceId => Try(()),
              cors: Boolean = false): Try[Option[Resource]] = {
     val uri = Uri(regionName, awsAccountId, lambdaName, lambdaAlias)
     for {
@@ -263,7 +262,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     } yield resourceOpt
   }
 
-  def upDeploy(withAuth: ResourceId => Try[Unit] = resourceId => Try()) = {
+  def upDeploy(withAuth: ResourceId => Try[Unit] = resourceId => Try(())) = {
     for {
       resource <- getResource
       resourceOpt <- Try {
