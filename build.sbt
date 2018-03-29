@@ -12,5 +12,7 @@ lazy val root = (project in file(".")).settings(
     case _             => sys error s"Unhandled sbt version ${sbtCrossVersion.value}"
   }),
   addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.6"),
-  libraryDependencies ++= rootDeps
+  libraryDependencies ++= rootDeps,
+  credentials += Credentials((baseDirectory in LocalRootProject).value / ".credentials"),
+  scalacOptions -= "-Ybackend:GenBCode"
 )
