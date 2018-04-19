@@ -38,6 +38,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
              timeout: Option[Timeout],
              memorySize: Option[MemorySize],
              environment: Option[Map[String, String]],
+             reservedConcurrentExecutions: Option[Int],
              tags: Option[Map[String, String]],
              tracingMode: Option[TracingMode]) = {
     val code = new FunctionCode()
@@ -58,7 +59,23 @@ trait AWSLambdaWrapper extends AWSWrapper {
         tags.foreach(t => request.setTags(t.asJava))
         tracingMode.foreach(m => request.setTracingConfig(new TracingConfig().withMode(m)))
 
-        client.createFunction(request)
+        val createdFunction = client.createFunction(request)
+
+        reservedConcurrentExecutions match {
+          case Some(execs) =>
+            client.putFunctionConcurrency(
+              new PutFunctionConcurrencyRequest()
+                .withFunctionName(functionName)
+                .withReservedConcurrentExecutions(execs)
+            )
+          case None =>
+            client.deleteFunctionConcurrency(
+              new DeleteFunctionConcurrencyRequest()
+                .withFunctionName(functionName)
+            )
+        }
+
+        createdFunction
       }
     } yield cf
   }
@@ -90,6 +107,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
                    timeout: Option[Timeout],
                    memorySize: Option[MemorySize],
                    environment: Option[Map[String, String]],
+                   reservedConcurrentExecutions: Option[Int],
                    tracingMode: Option[TracingMode]) = Try {
     val request = new UpdateFunctionConfigurationRequest()
       .withFunctionName(functionName)
@@ -102,7 +120,23 @@ trait AWSLambdaWrapper extends AWSWrapper {
     environment.foreach(e => request.setEnvironment(new Environment().withVariables(e.asJava)))
     tracingMode.foreach(m => request.setTracingConfig(new TracingConfig().withMode(m)))
 
-    client.updateFunctionConfiguration(request)
+    val updatedFunction = client.updateFunctionConfiguration(request)
+
+    reservedConcurrentExecutions match {
+      case Some(execs) =>
+        client.putFunctionConcurrency(
+          new PutFunctionConcurrencyRequest()
+            .withFunctionName(functionName)
+            .withReservedConcurrentExecutions(execs)
+        )
+      case None =>
+        client.deleteFunctionConcurrency(
+          new DeleteFunctionConcurrencyRequest()
+            .withFunctionName(functionName)
+        )
+    }
+
+    updatedFunction
   }
 
   def tagResource(functionArn: FunctionArn, tags: Map[String, String]) = Try {
@@ -169,6 +203,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
              timeout: Option[Timeout],
              memorySize: Option[MemorySize],
              environment: Option[Map[String, String]],
+             reservedConcurrentExecutions: Option[Int],
              tags: Option[Map[String, String]],
              tracingMode: Option[TracingMode],
              createAfter: FunctionArn => Try[Any] = _ => Try(())) = {
@@ -185,6 +220,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
             timeout = timeout,
             memorySize = memorySize,
             environment = environment,
+            reservedConcurrentExecutions = reservedConcurrentExecutions,
             tracingMode = tracingMode
           )
           _ <- tags map { t =>
@@ -203,6 +239,7 @@ trait AWSLambdaWrapper extends AWSWrapper {
             timeout = timeout,
             memorySize = memorySize,
             environment = environment,
+            reservedConcurrentExecutions = reservedConcurrentExecutions,
             tags = tags,
             tracingMode = tracingMode
           )
