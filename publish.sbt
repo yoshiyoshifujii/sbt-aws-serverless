@@ -1,21 +1,16 @@
 publishMavenStyle := true
 
-publishTo := {
-  val nexus = "https://oss.sonatype.org/"
-  if (isSnapshot.value)
-    Some("snapshots" at nexus + "content/repositories/snapshots")
-  else
-    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
-}
+publishTo := sonatypePublishTo.value
 
 publishArtifact in Test := false
 
-pomIncludeRepository := { _ => false }
+pomIncludeRepository := { _ =>
+  false
+}
 
 sonatypeProfileName := "com.github.yoshiyoshifujii"
 
-pomExtra := (
-  <url>https://github.com/yoshiyoshifujii/sbt-aws-serverless</url>
+pomExtra := (<url>https://github.com/yoshiyoshifujii/sbt-aws-serverless</url>
   <licenses>
     <license>
       <name>Apache 2</name>
@@ -33,4 +28,3 @@ pomExtra := (
       <url>https://github.com/yoshiyoshifujii</url>
     </developer>
   </developers>)
-
