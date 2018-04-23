@@ -34,7 +34,7 @@ trait DeployListBase extends KeysBase {
             deployments <- api.getDeployments(id)
             authorizers <- api.getAuthorizers(id)
           } yield {
-            val deploymentMap = deployments.getItems.asScala.map(i => i.getId -> i).toMap
+            val deploymentMap = deployments.map(i => i.getId -> i).toMap
             stages.getItem.asScala.filter(_.getStageName == stage).foreach { s =>
               doPrint("Stage", s.getStageName)
               doPrint("Deployment",

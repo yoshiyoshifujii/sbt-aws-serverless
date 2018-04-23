@@ -1,6 +1,6 @@
 package com.github.yoshiyoshifujii.aws.serverless.keys
 
-import com.amazonaws.services.apigateway.model.{GetDeploymentsResult, GetStagesResult}
+import com.amazonaws.services.apigateway.model.{Deployment, GetStagesResult}
 import com.amazonaws.services.lambda.model.{FunctionConfiguration, ListVersionsByFunctionResult}
 import com.github.yoshiyoshifujii.aws.apigateway.RestApiId
 import serverless.FunctionBase
@@ -41,10 +41,18 @@ trait CleanBase extends KeysBase {
       for {
         stage <- stages.getItem.asScala.map(_.getStageName)
         func  <- so.functions.filteredHttpEvents
+        if {
+          lambda.get(func.nameWith(stage)) match {
+            case Success(s) => s.isDefined
+            case Failure(_) => false
+          }
+        }
       } yield
-        lambda
-          .listVersionsByFunction(func.nameWith(stage))
-          .map(FunctionAndListVersionsResult(func, _))
+        for {
+          result <- lambda
+            .listVersionsByFunction(func.nameWith(stage))
+            .map(FunctionAndListVersionsResult(func, _))
+        } yield result
     }.map(_.flatMap(_.functionAndPublished))
 
   private def getStreamEventPublishes(stages: GetStagesResult): Try[Seq[FunctionAndPublished]] =
@@ -68,10 +76,10 @@ trait CleanBase extends KeysBase {
 
   private def skip[E](t: Try[E]): Try[Unit] =
     t match {
-      case Success(_) => Try()
+      case Success(_) => Try(())
       case Failure(e) =>
         println(e.getMessage)
-        Try()
+        Try(())
     }
 
   private def deletePublishes(exportFunctionArns: Seq[String],
@@ -97,10 +105,9 @@ trait CleanBase extends KeysBase {
 
   private def deleteDeployments(restApiId: RestApiId,
                                 stages: GetStagesResult,
-                                deployments: GetDeploymentsResult): Try[Unit] = {
-    val usedDeploymentIds = stages.getItem.asScala.map(_.getDeploymentId)
-    val unUsedDeploymentIds = deployments.getItems.asScala
-      .map(_.getId) diff usedDeploymentIds
+                                deployments: Seq[Deployment]): Try[Unit] = {
+    val usedDeploymentIds   = stages.getItem.asScala.map(_.getDeploymentId)
+    val unUsedDeploymentIds = deployments.map(_.getId) diff usedDeploymentIds
     for {
       _ <- sequence {
         unUsedDeploymentIds map { id =>
@@ -121,8 +128,7 @@ trait CleanBase extends KeysBase {
       _                  <- deleteDeployments(restApiId, stages, deployments)
     } yield ()
 
-  def deleteNoUseVersion(versions: Seq[FunctionConfiguration],
-                         aliases: Seq[FunctionAndPublished]) =
+  def deleteNoUseVersion(versions: Seq[FunctionConfiguration], aliases: Seq[FunctionAndPublished]) =
     Try {
       val deletionCandidate = versions.map(_.getFunctionArn) diff aliases.map(_.publishedArn)
       deletionCandidate map { arn =>

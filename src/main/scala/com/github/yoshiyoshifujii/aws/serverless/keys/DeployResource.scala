@@ -1,5 +1,6 @@
 package com.github.yoshiyoshifujii.aws.serverless.keys
 
+import com.amazonaws.services.apigateway.model.IntegrationType
 import com.github.yoshiyoshifujii.aws.apigateway.{
   AWSApiGatewayAuthorize,
   AWSApiGatewayMethods,
@@ -15,10 +16,14 @@ trait DeployResource extends KeysBase {
                                lambdaSuffix: String,
                                publishedVersion: Option[String],
                                httpEvent: HttpEvent) = {
-    val method = AWSApiGatewayMethods(regionName = so.provider.region,
-                                      restApiId = restApiId,
-                                      path = httpEvent.path,
-                                      httpMethod = httpEvent.method)
+    val method = AWSApiGatewayMethods(
+      regionName = so.provider.region,
+      restApiId = restApiId,
+      integrationType =
+        if (httpEvent.proxyIntegration) IntegrationType.AWS_PROXY else IntegrationType.AWS,
+      path = httpEvent.path,
+      httpMethod = httpEvent.method
+    )
 
     for {
       resourceOpt <- method.deploy(

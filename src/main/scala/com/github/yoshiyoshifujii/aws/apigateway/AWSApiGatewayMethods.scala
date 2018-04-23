@@ -7,6 +7,7 @@ import scala.util.Try
 
 trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
   val restApiId: RestApiId
+  val integrationType: IntegrationType
   val path: Path
   val httpMethod: HttpMethod
 
@@ -15,7 +16,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
       .withRestApiId(restApiId)
       .withResourceId(resourceId)
       .withHttpMethod(httpMethod)
-      .withType(IntegrationType.AWS)
+      .withType(integrationType)
       .withIntegrationHttpMethod("POST")
       .withUri(uri.value)
       .withRequestTemplates(requestTemplates.toMap.asJava)
@@ -190,6 +191,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
   def enableCORS(resourceId: ResourceId) = {
     val om = AWSApiGatewayMethods(regionName = this.regionName,
                                   restApiId = this.restApiId,
+                                  integrationType = this.integrationType,
                                   path = this.path,
                                   httpMethod = "OPTIONS")
     for {
@@ -248,7 +250,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
              lambdaAlias: Option[String],
              requestTemplates: RequestTemplates,
              responseTemplates: ResponseTemplates,
-             withAuth: ResourceId => Try[Unit] = _ => Try(),
+             withAuth: ResourceId => Try[Unit] = _ => Try(()),
              cors: Boolean = false): Try[Option[Resource]] = {
     val uri = Uri(regionName, awsAccountId, lambdaName, lambdaAlias)
     for {
@@ -259,7 +261,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
           (for {
 //            _ <- putIntegration(resourceId, uri, requestTemplates)
             _ <- putIntegrationAwsProxy(resourceId, uri)
-            _ <- if (cors) enableCORS(resourceId) else Try()
+            _ <- if (cors) enableCORS(resourceId) else Try(())
             _ <- putIntegrationResponses(resourceId, responseTemplates)
             _ <- withAuth(resourceId)
           } yield r).get
@@ -268,7 +270,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     } yield resourceOpt
   }
 
-  def upDeploy(withAuth: ResourceId => Try[Unit] = _ => Try()) =
+  def upDeploy(withAuth: ResourceId => Try[Unit] = _ => Try(())) =
     for {
       resource <- getResource
       resourceOpt <- Try {
@@ -296,6 +298,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
 
 case class AWSApiGatewayMethods(regionName: String,
                                 restApiId: RestApiId,
+                                integrationType: IntegrationType,
                                 path: Path,
                                 httpMethod: HttpMethod)
     extends AWSApiGatewayMethodsWrapper
