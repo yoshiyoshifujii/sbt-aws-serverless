@@ -25,6 +25,19 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     client.putIntegration(request)
   }
 
+  def putIntegrationAwsProxy(resourceId: ResourceId, uri: Uri) = Try {
+    val request = new PutIntegrationRequest()
+      .withRestApiId(restApiId)
+      .withResourceId(resourceId)
+      .withHttpMethod(httpMethod)
+      .withType(IntegrationType.AWS_PROXY)
+      .withIntegrationHttpMethod("POST")
+      .withUri(uri.value)
+      .withPassthroughBehavior("WHEN_NO_MATCH")
+
+    client.putIntegration(request)
+  }
+
   def putIntegrationMock(resourceId: ResourceId) = Try {
     val request = new PutIntegrationRequest()
       .withRestApiId(restApiId)
@@ -128,13 +141,13 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
 
   def updateMethodResponse(resourceId: ResourceId,
                            statusCode: StatusCode,
-                           patchOperatios: (PatchPath, PatchValue, Op)*) = Try {
+                           patchOperations: (PatchPath, PatchValue, Op)*) = Try {
     val request = new UpdateMethodResponseRequest()
       .withRestApiId(restApiId)
       .withResourceId(resourceId)
       .withHttpMethod(httpMethod)
       .withStatusCode(statusCode)
-      .withPatchOperations(patchOperatios.map(g => generatePatch(g._1)(g._2)(g._3)).asJava)
+      .withPatchOperations(patchOperations.map(g => generatePatch(g._1)(g._2)(g._3)).asJava)
 
     client.updateMethodResponse(request)
   }
@@ -164,13 +177,13 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     client.putMethod(request)
   }
 
-  def updateMethod(resourceId: ResourceId, patchOperatios: (PatchPath, PatchValue)*) = Try {
+  def updateMethod(resourceId: ResourceId, patchOperations: (PatchPath, PatchValue)*) = Try {
 
     val request = new UpdateMethodRequest()
       .withRestApiId(restApiId)
       .withResourceId(resourceId)
       .withHttpMethod(httpMethod)
-      .withPatchOperations(patchOperatios.map(g => generatePatch(g._1)(g._2)(Op.Replace)).asJava)
+      .withPatchOperations(patchOperations.map(g => generatePatch(g._1)(g._2)(Op.Replace)).asJava)
 
     client.updateMethod(request)
   }
@@ -237,7 +250,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
              lambdaAlias: Option[String],
              requestTemplates: RequestTemplates,
              responseTemplates: ResponseTemplates,
-             withAuth: ResourceId => Try[Unit] = resourceId => Try(()),
+             withAuth: ResourceId => Try[Unit] = _ => Try(()),
              cors: Boolean = false): Try[Option[Resource]] = {
     val uri = Uri(regionName, awsAccountId, lambdaName, lambdaAlias)
     for {
@@ -246,14 +259,9 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
         resource map { r =>
           val resourceId = r.getId
           (for {
-            _ <- putIntegration(resourceId, uri, requestTemplates)
-            _ <- Try {
-              if (cors) {
-                enableCORS(resourceId).get
-              } else {
-                Seq.empty
-              }
-            }
+//            _ <- putIntegration(resourceId, uri, requestTemplates)
+            _ <- putIntegrationAwsProxy(resourceId, uri)
+            _ <- if (cors) enableCORS(resourceId) else Try(())
             _ <- putIntegrationResponses(resourceId, responseTemplates)
             _ <- withAuth(resourceId)
           } yield r).get
@@ -262,7 +270,7 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
     } yield resourceOpt
   }
 
-  def upDeploy(withAuth: ResourceId => Try[Unit] = resourceId => Try(())) = {
+  def upDeploy(withAuth: ResourceId => Try[Unit] = _ => Try(())) =
     for {
       resource <- getResource
       resourceOpt <- Try {
@@ -276,7 +284,6 @@ trait AWSApiGatewayMethodsWrapper extends AWSApiGatewayRestApiWrapper {
         }
       }
     } yield resourceOpt
-  }
 
   private lazy val generatePatch =
     (path: PatchPath) =>
