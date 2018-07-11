@@ -3,10 +3,7 @@ import Dependencies._
 val sbtCrossVersion = sbtVersion in pluginCrossBuild
 
 lazy val root = (project in file(".")).settings(
-  name := {
-
-    "sbt-aws-serverless"
-  },
+  name := "sbt-aws-serverless",
   organization := "com.github.yoshiyoshifujii",
   sbtPlugin := true,
   scalaVersion := (CrossVersion partialVersion sbtCrossVersion.value match {
