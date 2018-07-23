@@ -169,4 +169,32 @@ object Serverless {
     keys.Clean(so).invoke.get
   }
 
+  def functionDeployTask(key: InputKey[Unit]): Initialize[InputTask[Unit]] =
+    Def.inputTask {
+      (for {
+        (functionName, stage) <- spaceDelimited("<functionName> <stage>").parsed match {
+          case Seq(a, b) => Some(a -> b)
+          case _         => None
+        }
+        so              = (serverlessOption in key).value
+        rootName        = (name in key).value
+        rootDescription = (description in key).?.value
+        rootVersion     = (version in key).?.value
+        noUploadMode    = (serverlessNoUploadMode in key).value
+        function <- so.functions.find(functionName)
+        _ = function match {
+          case f: serverless.Function =>
+            keys
+              .FunctionDeploy(so, rootName, rootDescription, rootVersion, noUploadMode)
+              .invokeFunctionDeploy(f, stage)
+              .get
+          case _ =>
+            ""
+        }
+      } yield ()).getOrElse {
+        sys.error(
+          "Error serverlessFunctionDeploy. useage: serverlessFunctionDeploy <functionName> <stage>")
+      }
+    }
+
 }

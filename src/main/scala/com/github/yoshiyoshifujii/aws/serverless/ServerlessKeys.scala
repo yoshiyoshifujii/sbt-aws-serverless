@@ -40,6 +40,8 @@ trait ServerlessKeys {
   lazy val serverlessNoUploadMode =
     taskKey[Boolean]("If there is a Jar of the same name in S3, use it")
 
+  lazy val serverlessFunctionDeploy =
+    inputKey[Unit]("The functionDeploy task deploys the AWS Lambda Function and API Gateway.")
 }
 
 object ServerlessKeys extends ServerlessKeys
