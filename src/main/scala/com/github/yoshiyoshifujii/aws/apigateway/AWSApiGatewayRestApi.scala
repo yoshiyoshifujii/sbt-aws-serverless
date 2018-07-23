@@ -5,6 +5,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
 import com.amazonaws.services.apigateway.model._
+import com.github.yoshiyoshifujii.aws.Extension
 import com.github.yoshiyoshifujii.cliformatter.CliFormatter
 
 import scala.annotation.tailrec
@@ -66,12 +67,14 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
     client.importRestApi(request)
   }
 
-  def export(restApiId: RestApiId, stageName: StageName) = Try {
+  def export(restApiId: RestApiId,
+             stageName: StageName,
+             extensions: Seq[Extension] = Seq(Extension.Integrations)) = Try {
     val request = new GetExportRequest()
       .withRestApiId(restApiId)
       .withStageName(stageName)
       .withExportType("swagger")
-      .addParametersEntry("extensions", "integrations")
+      .addParametersEntry("extensions", Extension.mkValue(extensions))
       .withAccepts("application/json")
 
     client.getExport(request)

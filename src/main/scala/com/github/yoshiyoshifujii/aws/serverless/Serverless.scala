@@ -5,6 +5,7 @@ import Keys._
 import Def.Initialize
 import com.github.yoshiyoshifujii.aws
 import complete.DefaultParsers._
+import serverless.FunctionBase
 
 object Serverless {
 
@@ -169,31 +170,37 @@ object Serverless {
     keys.Clean(so).invoke.get
   }
 
-  def functionDeployTask(key: InputKey[Unit]): Initialize[InputTask[Unit]] =
+  def functionsDeployTask(deployKey: InputKey[Unit], functionsDeployKey: InputKey[Unit]): Initialize[InputTask[Unit]] =
     Def.inputTask {
       (for {
-        (functionName, stage) <- spaceDelimited("<functionName> <stage>").parsed match {
-          case Seq(a, b) => Some(a -> b)
-          case _         => None
+        stage <- spaceDelimited("<stage>").parsed match {
+          case Seq(a) => Some(a)
+          case _      => None
         }
-        so              = (serverlessOption in key).value
-        rootName        = (name in key).value
-        rootDescription = (description in key).?.value
-        rootVersion     = (version in key).?.value
-        noUploadMode    = (serverlessNoUploadMode in key).value
-        function <- so.functions.find(functionName)
-        _ = function match {
-          case f: serverless.Function =>
-            keys
-              .FunctionDeploy(so, rootName, rootDescription, rootVersion, noUploadMode)
-              .invokeFunctionDeploy(f, stage)
-              .get
-          case _ =>
-            ""
-        }
+        so              = (serverlessOption in deployKey).value
+        rootName        = (name in deployKey).value
+        rootDescription = (description in deployKey).?.value
+        rootVersion     = (version in deployKey).?.value
+        noUploadMode    = (serverlessNoUploadMode in deployKey).value
+        functionNames   = (serverlessFunctionNames in functionsDeployKey).value
+        functions <- functionNames.foldLeft(Option(Seq.empty: Seq[serverless.Function]))(
+          (acc, functionName) =>
+            acc match {
+              case None => None
+              case Some(_) => {
+                so.functions.find(functionName) match {
+                  case Some(a: serverless.Function) => acc.map(x => x ++ Seq(a))
+                  case _                            => None
+                }
+              }
+          })
+        _ = keys
+          .FunctionsDeploy(so, rootName, rootDescription, rootVersion, noUploadMode)
+          .invokeFunctionsDeploy(functions, stage)
+          .get
       } yield ()).getOrElse {
         sys.error(
-          "Error serverlessFunctionDeploy. useage: serverlessFunctionDeploy <functionName> <stage>")
+          "Error serverlessFunctionDeploy. useage: set serverlessFunctionNames := Seq(\"<functionName>\"); serverlessFunctionDeploy <stage>")
       }
     }
 

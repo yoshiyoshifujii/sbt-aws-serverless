@@ -45,6 +45,10 @@ object ServerlessPlugin extends AutoPlugin {
       .deployStreamTask(serverlessDeploy)
       .evaluated,
     serverlessClean := Serverless.clean(serverlessDeploy).value,
-    serverlessFunctionDeploy := Serverless.functionDeployTask(serverlessDeploy).evaluated
+    serverlessFunctionsDeploy := Serverless
+      .functionsDeployTask(serverlessDeploy, serverlessFunctionsDeploy)
+      .evaluated,
+    serverlessFunctionNames in serverlessFunctionsDeploy := serverlessFunctionNames.?.value
+      .getOrElse(Seq.empty)
   )
 }

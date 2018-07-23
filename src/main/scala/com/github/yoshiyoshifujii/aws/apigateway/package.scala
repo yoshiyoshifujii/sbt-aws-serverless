@@ -54,5 +54,16 @@ package object apigateway {
   case class IdentitySource(header: String) {
     lazy val mkValue = s"method.request.header.$header"
   }
+}
 
+sealed abstract class Extension(val value: String)
+
+object Extension {
+  case object Integrations extends Extension("integrations")
+  case object Authorizers  extends Extension("authorizers")
+  case object Apigateway   extends Extension("apigateway")
+
+  def mkValue(extentions: Seq[Extension]): String = {
+    extentions.map(_.value).mkString(",")
+  }
 }
