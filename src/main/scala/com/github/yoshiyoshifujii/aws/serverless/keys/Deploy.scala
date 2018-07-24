@@ -53,7 +53,7 @@ trait DeployBase
         } yield putRestApiResult
     }
 
-  private def createDeployment(stage: String) =
+  protected def createDeployment(stage: String) =
     swap {
       for {
         ag        <- so.apiGateway
@@ -88,9 +88,9 @@ trait DeployBase
       _ = println(s"Lambda published: ${publishVersionResult.getFunctionArn}")
     } yield Option(publishVersionResult.getVersion)
 
-  private def deployEvents(stage: String,
-                           function: FunctionBase,
-                           publishedVersion: PublishedVersion) =
+  protected def deployEvents(stage: String,
+                             function: FunctionBase,
+                             publishedVersion: PublishedVersion) =
     for {
       _ <- swap {
         so.restApiId map { restApiId =>

@@ -40,6 +40,8 @@ enablePlugins(ServerlessPlugin)
 
 `sbt serverlessClean` Clean up unneccessary deployments.
 
+`sbt serverlessFunctionsDeploy <stage>` The functionDeploy task deploys the AWS Lambda Function and API Gateway.
+
 ## Configuration
 
 ```sbt
