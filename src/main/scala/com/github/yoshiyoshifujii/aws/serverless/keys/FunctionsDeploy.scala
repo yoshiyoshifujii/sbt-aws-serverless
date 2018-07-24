@@ -18,7 +18,7 @@ trait FunctionsDeployBase extends DeployBase {
           getExportResult <- api.export(
             restApiId = restApiId,
             stageName = stage,
-            extensions = Seq(Extension.Integrations, Extension.Authorizers)
+            extensions = Some(Set(Extension.Integrations, Extension.Authorizers))
           )
           putRestApiResult <- api.put(
             restApiId = restApiId,

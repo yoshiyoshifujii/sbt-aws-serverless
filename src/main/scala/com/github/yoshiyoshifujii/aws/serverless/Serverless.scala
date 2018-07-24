@@ -170,7 +170,8 @@ object Serverless {
     keys.Clean(so).invoke.get
   }
 
-  def functionsDeployTask(deployKey: InputKey[Unit], functionsDeployKey: InputKey[Unit]): Initialize[InputTask[Unit]] =
+  def functionsDeployTask(deployKey: InputKey[Unit],
+                          functionsDeployKey: InputKey[Unit]): Initialize[InputTask[Unit]] =
     Def.inputTask {
       (for {
         stage <- spaceDelimited("<stage>").parsed match {
@@ -189,14 +190,15 @@ object Serverless {
               case None => None
               case Some(_) => {
                 so.functions.find(functionName) match {
-                  case Some(a: serverless.Function) => acc.map(x => x ++ Seq(a))
+                  case Some(f: serverless.Function) => acc.map(a => a :+ f)
                   case _                            => None
                 }
               }
           })
+        fs <- if (functions.isEmpty) None else Some(functions)
         _ = keys
           .FunctionsDeploy(so, rootName, rootDescription, rootVersion, noUploadMode)
-          .invokeFunctionsDeploy(functions, stage)
+          .invokeFunctionsDeploy(fs, stage)
           .get
       } yield ()).getOrElse {
         sys.error(

@@ -67,15 +67,28 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
     client.importRestApi(request)
   }
 
+  @deprecated
+  def export(restApiId: RestApiId, stageName: StageName): Try[GetExportResult] =
+    export(restApiId, stageName, Some(Set(Extension.Integrations)))
+
   def export(restApiId: RestApiId,
              stageName: StageName,
-             extensions: Seq[Extension] = Seq(Extension.Integrations)) = Try {
-    val request = new GetExportRequest()
-      .withRestApiId(restApiId)
-      .withStageName(stageName)
-      .withExportType("swagger")
-      .addParametersEntry("extensions", Extension.mkValue(extensions))
-      .withAccepts("application/json")
+             extensions: Option[Set[Extension]]): Try[GetExportResult] = Try {
+    val request = extensions match {
+      case Some(es) =>
+        new GetExportRequest()
+          .withRestApiId(restApiId)
+          .withStageName(stageName)
+          .withExportType("swagger")
+          .addParametersEntry("extensions", es.map(_.value).mkString(","))
+          .withAccepts("application/json")
+      case None =>
+        new GetExportRequest()
+          .withRestApiId(restApiId)
+          .withStageName(stageName)
+          .withExportType("swagger")
+          .withAccepts("application/json")
+    }
 
     client.getExport(request)
   }
