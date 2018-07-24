@@ -5,6 +5,7 @@ import Keys._
 import Def.Initialize
 import com.github.yoshiyoshifujii.aws
 import complete.DefaultParsers._
+import serverless.FunctionBase
 
 object Serverless {
 
@@ -168,5 +169,41 @@ object Serverless {
     val so = (serverlessOption in key).value
     keys.Clean(so).invoke.get
   }
+
+  def functionsDeployTask(deployKey: InputKey[Unit],
+                          functionsDeployKey: InputKey[Unit]): Initialize[InputTask[Unit]] =
+    Def.inputTask {
+      (for {
+        stage <- spaceDelimited("<stage>").parsed match {
+          case Seq(a) => Some(a)
+          case _      => None
+        }
+        so              = (serverlessOption in deployKey).value
+        rootName        = (name in deployKey).value
+        rootDescription = (description in deployKey).?.value
+        rootVersion     = (version in deployKey).?.value
+        noUploadMode    = (serverlessNoUploadMode in deployKey).value
+        functionNames   = (serverlessFunctionNames in functionsDeployKey).value
+        functions <- functionNames.foldLeft(Option(Seq.empty: Seq[serverless.Function]))(
+          (acc, functionName) =>
+            acc match {
+              case None => None
+              case Some(_) => {
+                so.functions.find(functionName) match {
+                  case Some(f: serverless.Function) => acc.map(a => a :+ f)
+                  case _                            => None
+                }
+              }
+          })
+        fs <- if (functions.isEmpty) None else Some(functions)
+        _ = keys
+          .FunctionsDeploy(so, rootName, rootDescription, rootVersion, noUploadMode)
+          .invokeFunctionsDeploy(fs, stage)
+          .get
+      } yield ()).getOrElse {
+        sys.error(
+          "Error serverlessFunctionDeploy. useage: set serverlessFunctionNames := Seq(\"<functionName>\"); serverlessFunctionDeploy <stage>")
+      }
+    }
 
 }
