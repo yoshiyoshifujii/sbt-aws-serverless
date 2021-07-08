@@ -1,9 +1,11 @@
 package com.github.yoshiyoshifujii.aws.apigateway
 
 import java.io.File
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
 import com.amazonaws.services.apigateway.model._
+import com.github.yoshiyoshifujii.aws.Extension
 import com.github.yoshiyoshifujii.cliformatter.CliFormatter
 
 import scala.annotation.tailrec
@@ -65,13 +67,28 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
     client.importRestApi(request)
   }
 
-  def export(restApiId: RestApiId, stageName: StageName) = Try {
-    val request = new GetExportRequest()
-      .withRestApiId(restApiId)
-      .withStageName(stageName)
-      .withExportType("swagger")
-      .addParametersEntry("extensions", "integrations")
-      .withAccepts("application/json")
+  @deprecated
+  def export(restApiId: RestApiId, stageName: StageName): Try[GetExportResult] =
+    export(restApiId, stageName, Some(Set(Extension.Integrations)))
+
+  def export(restApiId: RestApiId,
+             stageName: StageName,
+             extensions: Option[Set[Extension]]): Try[GetExportResult] = Try {
+    val request = extensions match {
+      case Some(es) =>
+        new GetExportRequest()
+          .withRestApiId(restApiId)
+          .withStageName(stageName)
+          .withExportType("swagger")
+          .addParametersEntry("extensions", es.map(_.value).mkString(","))
+          .withAccepts("application/json")
+      case None =>
+        new GetExportRequest()
+          .withRestApiId(restApiId)
+          .withStageName(stageName)
+          .withExportType("swagger")
+          .withAccepts("application/json")
+    }
 
     client.getExport(request)
   }
@@ -96,15 +113,25 @@ trait AWSApiGatewayRestApiWrapper extends AWSApiGatewayWrapper {
       getFunctionArn(stageVariables, export)
     }
 
-  def put(restApiId: RestApiId, body: File, mode: PutMode, failOnWarnings: Option[Boolean]) = Try {
-    val request = new PutRestApiRequest()
-      .withRestApiId(restApiId)
-      .withBody(toByteBuffer(body))
-      .withMode(mode)
-    failOnWarnings.foreach(request.setFailOnWarnings(_))
+  def put(restApiId: RestApiId,
+          body: File,
+          mode: PutMode,
+          failOnWarnings: Option[Boolean]): Try[PutRestApiResult] =
+    put(restApiId, toByteBuffer(body), mode, failOnWarnings)
 
-    client.putRestApi(request)
-  }
+  def put(restApiId: RestApiId,
+          body: ByteBuffer,
+          mode: PutMode,
+          failOnWarnings: Option[Boolean]): Try[PutRestApiResult] =
+    Try {
+      val request = new PutRestApiRequest()
+        .withRestApiId(restApiId)
+        .withBody(body)
+        .withMode(mode)
+      failOnWarnings.foreach(request.setFailOnWarnings(_))
+
+      client.putRestApi(request)
+    }
 
   def createDeployment(restApiId: RestApiId,
                        stageName: StageName,

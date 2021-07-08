@@ -7,7 +7,7 @@ sbt plugin to deploy code to Amazon API Gateway and AWS Lambda
 Add the following to your `project/plugins.sbt` file:
 
 ```sbt
-addSbtPlugin("com.github.yoshiyoshifujii" % "sbt-aws-serverless" % "4.0.0")
+addSbtPlugin("com.github.yoshiyoshifujii" % "sbt-aws-serverless" % "4.1.0")
 ```
 
 Add the `ServerlessPlugin` auto-plugin to your build.sbt:
@@ -39,6 +39,8 @@ enablePlugins(ServerlessPlugin)
 `sbt serverlessDeployStream <stage>` The deployStream task deploys the AWS Stream Event.
 
 `sbt serverlessClean` Clean up unneccessary deployments.
+
+`sbt serverlessFunctionsDeploy <stage>` The functionDeploy task deploys the AWS Lambda Function and API Gateway.
 
 ## Configuration
 
